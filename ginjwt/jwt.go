@@ -107,6 +107,19 @@ func (m *Middleware) AuthRequired(scopes []string) gin.HandlerFunc {
 			return
 		}
 
+		// Some OIDC providers tack on a trailing slash to the iss: field even if it isn't
+		// specified. This ensures that the Issuers that are being compared are at least
+		// equivalent.
+		if ok := strings.HasSuffix(cl.Issuer, "/"); ok {
+			if chk := strings.HasSuffix(m.config.Issuer, "/"); !chk {
+				m.config.Issuer += "/"
+			}
+		} else {
+			if chk := strings.HasSuffix(m.config.Issuer, "/"); chk {
+				m.config.Issuer = strings.TrimSuffix(m.config.Issuer, "/")
+			}
+		}
+
 		err = cl.Validate(jwt.Expected{
 			Issuer:   m.config.Issuer,
 			Audience: jwt.Audience{m.config.Audience},
