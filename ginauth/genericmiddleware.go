@@ -5,7 +5,7 @@ import (
 )
 
 // ClaimMetadata returns the minimal relevant information so middleware
-// can set the appropriate metadat to a context (e.g. a gin.Context)
+// can set the appropriate metadata to a context (e.g. a gin.Context)
 type ClaimMetadata struct {
 	Subject string
 	User    string

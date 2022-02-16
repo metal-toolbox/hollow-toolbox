@@ -15,6 +15,7 @@ import (
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 
+	"go.hollow.sh/toolbox/ginauth"
 	"go.hollow.sh/toolbox/ginjwt"
 )
 
@@ -196,6 +197,10 @@ func TestMultitokenMiddlewareValidatesTokens(t *testing.T) {
 			cfg2 := ginjwt.AuthConfig{Enabled: true, Audience: tt.middlewareAud, Issuer: tt.middlewareIss, JWKSURI: jwksURI2}
 			authMW, err := ginjwt.NewMultiTokenMiddlwareFromConfigs(cfg1, cfg2)
 			require.NoError(t, err)
+
+			// We add an extra failing remote middleware, these errors shouldn't surface.
+			addErr := authMW.Add(ginauth.NewRemoteMiddleware("http://foo-bar.unexistent", 0))
+			require.NoError(t, addErr)
 
 			r := gin.New()
 			r.Use(authMW.AuthRequired(tt.middlewareScopes))

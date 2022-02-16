@@ -85,7 +85,10 @@ func (mtm *MultiTokenMiddleware) AuthRequired(scopes []string) gin.HandlerFunc {
 			// If we previously had an error related to having an invalid signing key
 			// we overwrite the error to be surfaced. We care more about other types of
 			// errors, such as not having the appropriate scope
-			if errors.Is(surfacingErr, ErrInvalidSigningKey) {
+			// Also, if we previously had an error with the remote endpoint, we override the error.
+			// This might be a very general error and more specific ones are preferred
+			// for surfacing.
+			if errors.Is(surfacingErr, ErrMiddlewareRemote) || errors.Is(surfacingErr, ErrInvalidSigningKey) {
 				surfacingErr = err
 			}
 		}
