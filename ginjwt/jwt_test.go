@@ -256,3 +256,12 @@ func TestInvalidAuthHeader(t *testing.T) {
 		})
 	}
 }
+
+func TestInvalidJWKURIWithWrongPath(t *testing.T) {
+	uri := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+	uri += "/some-extra-path"
+	cfg := ginjwt.AuthConfig{Enabled: true, Audience: "aud", Issuer: "iss", JWKSURI: uri}
+	_, err := ginjwt.NewAuthMiddleware(cfg)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, ginjwt.ErrMiddlewareRemote)
+}

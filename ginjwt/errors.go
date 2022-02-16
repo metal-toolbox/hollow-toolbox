@@ -7,6 +7,12 @@ import (
 )
 
 var (
+	// ErrInvalidMiddlewareReference the middleware added was invalid
+	ErrInvalidMiddlewareReference = errors.New("invalid middleware")
+
+	// ErrMiddlewareRemote is the error returned when the middleware couldn't contact the remote endpoint
+	ErrMiddlewareRemote = errors.New("middleware setup")
+
 	// ErrInvalidSigningKey is the error returned when a token can not be verified because the signing key in invalid
 	ErrInvalidSigningKey = errors.New("invalid token signing key")
 

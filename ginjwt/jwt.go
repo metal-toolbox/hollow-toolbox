@@ -3,6 +3,7 @@ package ginjwt
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -157,6 +158,10 @@ func (m *Middleware) refreshJWKS() error {
 	}
 
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%w: %s", ErrMiddlewareRemote, resp.Body)
+	}
 
 	return json.NewDecoder(resp.Body).Decode(&m.cachedJWKS)
 }
