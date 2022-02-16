@@ -15,6 +15,7 @@ import (
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 
+	"go.hollow.sh/toolbox/ginauth"
 	"go.hollow.sh/toolbox/ginjwt"
 )
 
@@ -263,5 +264,5 @@ func TestInvalidJWKURIWithWrongPath(t *testing.T) {
 	cfg := ginjwt.AuthConfig{Enabled: true, Audience: "aud", Issuer: "iss", JWKSURI: uri}
 	_, err := ginjwt.NewAuthMiddleware(cfg)
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, ginjwt.ErrMiddlewareRemote)
+	assert.ErrorIs(t, err, ginauth.ErrMiddlewareRemote)
 }

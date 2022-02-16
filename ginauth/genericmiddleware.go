@@ -1,4 +1,4 @@
-package ginjwt
+package ginauth
 
 import (
 	"github.com/gin-gonic/gin"

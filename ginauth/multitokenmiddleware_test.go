@@ -1,4 +1,4 @@
-package ginjwt_test
+package ginauth_test
 
 import (
 	"crypto/rsa"
