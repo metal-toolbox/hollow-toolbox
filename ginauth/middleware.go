@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// AbortBecauseOfError aborts a gin context based on a given error
 func AbortBecauseOfError(c *gin.Context, err error) {
 	var authErr *AuthError
 

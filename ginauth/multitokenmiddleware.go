@@ -1,6 +1,7 @@
 package ginauth
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -45,23 +46,22 @@ func (mtm *MultiTokenMiddleware) AuthRequired(scopes []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var wg sync.WaitGroup
 
-		type aggregatedResult struct {
-			cm  ClaimMetadata
-			err error
-		}
-
-		res := make(chan aggregatedResult, len(mtm.verifiers))
+		res := make(chan error, len(mtm.verifiers))
 
 		wg.Add(len(mtm.verifiers))
 
 		for _, verifier := range mtm.verifiers {
-			go func(v GenericAuthMiddleware, r chan<- aggregatedResult) {
+			go func(v GenericAuthMiddleware, c *gin.Context, r chan<- error) {
 				defer wg.Done()
 
-				c, err := v.VerifyToken(c, scopes)
+				cm, err := v.VerifyToken(c, scopes)
 
-				r <- aggregatedResult{c, err}
-			}(verifier, res)
+				if err != nil {
+					v.SetMetadata(c, cm)
+				}
+
+				r <- err
+			}(verifier, c, res)
 		}
 
 		wg.Wait()
@@ -69,16 +69,8 @@ func (mtm *MultiTokenMiddleware) AuthRequired(scopes []string) gin.HandlerFunc {
 
 		var surfacingErr error
 
-		for result := range res {
-			if result.err == nil {
-				// if result.cm.Subject != "" {
-				// 	c.Set(contextKeySubject, result.cm.Subject)
-				// }
-
-				// if result.cm.User != "" {
-				// 	c.Set(contextKeyUser, result.cm.User)
-				// }
-
+		for err := range res {
+			if err == nil {
 				// NOTE(jaosorior): This takes the first non-error as a success.
 				// It would be quite strange if we would get multiple successes.
 				return
@@ -86,16 +78,16 @@ func (mtm *MultiTokenMiddleware) AuthRequired(scopes []string) gin.HandlerFunc {
 
 			// initialize surfacingErr.
 			if surfacingErr == nil {
-				surfacingErr = result.err
+				surfacingErr = err
 				continue
 			}
 
 			// If we previously had an error related to having an invalid signing key
 			// we overwrite the error to be surfaced. We care more about other types of
 			// errors, such as not having the appropriate scope
-			// if errors.Is(surfacingErr, ErrInvalidSigningKey) {
-			// 	surfacingErr = result.err
-			// }
+			if errors.Is(surfacingErr, ErrInvalidSigningKey) {
+				surfacingErr = err
+			}
 		}
 
 		if surfacingErr != nil {

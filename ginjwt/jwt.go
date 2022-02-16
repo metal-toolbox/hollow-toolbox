@@ -62,6 +62,17 @@ func NewAuthMiddleware(cfg AuthConfig) (*Middleware, error) {
 	return mw, nil
 }
 
+// SetMetadata sets the needed metadata to the gin context which came from the token
+func (m *Middleware) SetMetadata(c *gin.Context, cm ginauth.ClaimMetadata) {
+	if cm.Subject != "" {
+		c.Set(contextKeySubject, cm.Subject)
+	}
+
+	if cm.User != "" {
+		c.Set(contextKeyUser, cm.User)
+	}
+}
+
 // VerifyToken verifies a JWT token gotten from the gin.Context object against the given scopes.
 // This implements the GenericMiddleware interface
 func (m *Middleware) VerifyToken(c *gin.Context, scopes []string) (ginauth.ClaimMetadata, error) {
@@ -90,7 +101,7 @@ func (m *Middleware) VerifyToken(c *gin.Context, scopes []string) (ginauth.Claim
 
 	key := m.getJWKS(tok.Headers[0].KeyID)
 	if key == nil {
-		return ginauth.ClaimMetadata{}, NewInvalidSigningKeyError()
+		return ginauth.ClaimMetadata{}, ginauth.NewInvalidSigningKeyError()
 	}
 
 	cl := jwt.Claims{}

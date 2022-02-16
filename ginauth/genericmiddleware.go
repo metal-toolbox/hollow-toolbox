@@ -15,4 +15,5 @@ type ClaimMetadata struct {
 // Note that this can be stacked together using the MultiTokenMiddleware construct.
 type GenericAuthMiddleware interface {
 	VerifyToken(*gin.Context, []string) (ClaimMetadata, error)
+	SetMetadata(*gin.Context, ClaimMetadata)
 }

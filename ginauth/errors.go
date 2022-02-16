@@ -17,6 +17,11 @@ var (
 	// validate a token for some reason. This is not to be used as-is but is useful for type
 	// comparison with the `AuthError` struct.
 	ErrAuthentication = errors.New("authentication error")
+
+	// ErrInvalidSigningKey is the error returned when a token can not be verified because the signing key in invalid
+	// NOTE(jaosorior): The fact that this is in this package is a little hacky... but it's to not have a
+	// circular dependency with the ginjwt package.
+	ErrInvalidSigningKey = errors.New("invalid token signing key")
 )
 
 // AuthError represents an auth error coming from a middleware function
@@ -91,4 +96,10 @@ func NewTokenValidationError(err error) error {
 			err:           err,
 		},
 	}
+}
+
+// NewInvalidSigningKeyError returns an AuthError that indicates
+// that the signing key used to validate the token was not valid
+func NewInvalidSigningKeyError() error {
+	return NewAuthenticationErrorFrom(ErrInvalidSigningKey)
 }
