@@ -2,6 +2,7 @@ package ginjwt
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -36,8 +37,14 @@ func NewMultiTokenMiddlwareFromConfigs(cfgs ...AuthConfig) (*MultiTokenMiddlewar
 
 // Add will append another middleware object (or verifier) to the list
 // which we'll use to check concurrently
-func (mtm *MultiTokenMiddleware) Add(middleware GenericAuthMiddleware) {
+func (mtm *MultiTokenMiddleware) Add(middleware GenericAuthMiddleware) error {
+	if middleware == nil {
+		return fmt.Errorf("%w: %s", ErrInvalidMiddlewareReference, "The middleware reference can't be nil")
+	}
+
 	mtm.verifiers = append(mtm.verifiers, middleware)
+
+	return nil
 }
 
 // AuthRequired is similar to the `AuthRequired` function from the Middleware type
