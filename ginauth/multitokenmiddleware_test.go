@@ -1,4 +1,4 @@
-package ginjwt_test
+package ginauth_test
 
 import (
 	"crypto/rsa"
@@ -19,7 +19,7 @@ import (
 	"go.hollow.sh/toolbox/ginjwt"
 )
 
-func TestMiddlewareValidatesTokens(t *testing.T) {
+func TestMultitokenMiddlewareValidatesTokens(t *testing.T) {
 	var testCases = []struct {
 		testName         string
 		middlewareAud    string
@@ -153,7 +153,7 @@ func TestMiddlewareValidatesTokens(t *testing.T) {
 			"token not valid yet",
 		},
 		{
-			"happy path",
+			"happy path from first provider",
 			"ginjwt.test",
 			"ginjwt.test.issuer",
 			[]string{"testScope"},
@@ -169,15 +169,38 @@ func TestMiddlewareValidatesTokens(t *testing.T) {
 			http.StatusOK,
 			"ok",
 		},
+		{
+			"happy path from second provider",
+			"ginjwt.test",
+			"ginjwt.test.issuer",
+			[]string{"testScope"},
+			ginjwt.TestPrivRSAKey3,
+			ginjwt.TestPrivRSAKey3ID,
+			jwt.Claims{
+				Subject:   "test-user",
+				Issuer:    "ginjwt.test.issuer",
+				NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
+				Audience:  jwt.Audience{"ginjwt.test", "another.test.service"},
+			},
+			[]string{"testScope", "anotherScope", "more-scopes"},
+			http.StatusOK,
+			"ok",
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.testName, func(t *testing.T) {
-			jwksURI := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+			jwksURI1 := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+			jwksURI2 := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey3ID, ginjwt.TestPrivRSAKey4ID)
 
-			cfg := ginjwt.AuthConfig{Enabled: true, Audience: tt.middlewareAud, Issuer: tt.middlewareIss, JWKSURI: jwksURI}
-			authMW, err := ginjwt.NewAuthMiddleware(cfg)
+			cfg1 := ginjwt.AuthConfig{Enabled: true, Audience: tt.middlewareAud, Issuer: tt.middlewareIss, JWKSURI: jwksURI1}
+			cfg2 := ginjwt.AuthConfig{Enabled: true, Audience: tt.middlewareAud, Issuer: tt.middlewareIss, JWKSURI: jwksURI2}
+			authMW, err := ginjwt.NewMultiTokenMiddlwareFromConfigs(cfg1, cfg2)
 			require.NoError(t, err)
+
+			// We add an extra failing remote middleware, these errors shouldn't surface.
+			addErr := authMW.Add(ginauth.NewRemoteMiddleware("http://foo-bar.unexistent", 0))
+			require.NoError(t, addErr)
 
 			r := gin.New()
 			r.Use(authMW.AuthRequired(tt.middlewareScopes))
@@ -200,7 +223,7 @@ func TestMiddlewareValidatesTokens(t *testing.T) {
 	}
 }
 
-func TestInvalidAuthHeader(t *testing.T) {
+func TestMultitokenInvalidAuthHeader(t *testing.T) {
 	var testCases = []struct {
 		testName         string
 		authHeader       string
@@ -237,7 +260,7 @@ func TestInvalidAuthHeader(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			jwksURI := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 			cfg := ginjwt.AuthConfig{Enabled: true, Audience: "aud", Issuer: "iss", JWKSURI: jwksURI}
-			authMW, err := ginjwt.NewAuthMiddleware(cfg)
+			authMW, err := ginjwt.NewMultiTokenMiddlwareFromConfigs(cfg)
 			require.NoError(t, err)
 
 			r := gin.New()
@@ -256,13 +279,4 @@ func TestInvalidAuthHeader(t *testing.T) {
 			assert.Contains(t, w.Body.String(), tt.responseContains)
 		})
 	}
-}
-
-func TestInvalidJWKURIWithWrongPath(t *testing.T) {
-	uri := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
-	uri += "/some-extra-path"
-	cfg := ginjwt.AuthConfig{Enabled: true, Audience: "aud", Issuer: "iss", JWKSURI: uri}
-	_, err := ginjwt.NewAuthMiddleware(cfg)
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, ginauth.ErrMiddlewareRemote)
 }

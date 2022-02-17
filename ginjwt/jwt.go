@@ -2,6 +2,7 @@ package ginjwt
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -9,6 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
+
+	"go.hollow.sh/toolbox/ginauth"
 )
 
 const (
@@ -59,6 +62,89 @@ func NewAuthMiddleware(cfg AuthConfig) (*Middleware, error) {
 	return mw, nil
 }
 
+// SetMetadata sets the needed metadata to the gin context which came from the token
+func (m *Middleware) SetMetadata(c *gin.Context, cm ginauth.ClaimMetadata) {
+	if cm.Subject != "" {
+		c.Set(contextKeySubject, cm.Subject)
+	}
+
+	if cm.User != "" {
+		c.Set(contextKeyUser, cm.User)
+	}
+}
+
+// VerifyToken verifies a JWT token gotten from the gin.Context object against the given scopes.
+// This implements the GenericMiddleware interface
+func (m *Middleware) VerifyToken(c *gin.Context, scopes []string) (ginauth.ClaimMetadata, error) {
+	authHeader := c.Request.Header.Get("Authorization")
+
+	if authHeader == "" {
+		return ginauth.ClaimMetadata{}, ginauth.NewAuthenticationError("missing authorization header, expected format: \"Bearer token\"")
+	}
+
+	authHeaderParts := strings.SplitN(authHeader, " ", expectedAuthHeaderParts)
+
+	if !(len(authHeaderParts) == expectedAuthHeaderParts && strings.ToLower(authHeaderParts[0]) == "bearer") {
+		return ginauth.ClaimMetadata{}, ginauth.NewAuthenticationError("invalid authorization header, expected format: \"Bearer token\"")
+	}
+
+	rawToken := authHeaderParts[1]
+
+	tok, err := jwt.ParseSigned(rawToken)
+	if err != nil {
+		return ginauth.ClaimMetadata{}, ginauth.NewAuthenticationError("unable to parse auth token")
+	}
+
+	if tok.Headers[0].KeyID == "" {
+		return ginauth.ClaimMetadata{}, ginauth.NewAuthenticationError("unable to parse auth token header")
+	}
+
+	key := m.getJWKS(tok.Headers[0].KeyID)
+	if key == nil {
+		return ginauth.ClaimMetadata{}, ginauth.NewInvalidSigningKeyError()
+	}
+
+	cl := jwt.Claims{}
+	sc := map[string]interface{}{}
+
+	if err := tok.Claims(key, &cl, &sc); err != nil {
+		return ginauth.ClaimMetadata{}, ginauth.NewAuthenticationError("unable to validate auth token")
+	}
+
+	err = cl.Validate(jwt.Expected{
+		Issuer:   m.config.Issuer,
+		Audience: jwt.Audience{m.config.Audience},
+		Time:     time.Now(),
+	})
+	if err != nil {
+		return ginauth.ClaimMetadata{}, ginauth.NewTokenValidationError(err)
+	}
+
+	var roles []string
+	switch r := sc[m.config.RolesClaim].(type) {
+	case string:
+		roles = strings.Split(r, " ")
+	case []interface{}:
+		for _, i := range r {
+			roles = append(roles, i.(string))
+		}
+	}
+
+	if !hasScope(roles, scopes) {
+		return ginauth.ClaimMetadata{}, ginauth.NewAuthorizationError("not authorized, missing required scope")
+	}
+
+	var user string
+	switch u := sc[m.config.UsernameClaim].(type) {
+	case string:
+		user = u
+	default:
+		user = cl.Subject
+	}
+
+	return ginauth.ClaimMetadata{Subject: cl.Subject, User: user}, nil
+}
+
 // AuthRequired provides a middleware that ensures a request has authentication
 func (m *Middleware) AuthRequired(scopes []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -66,82 +152,14 @@ func (m *Middleware) AuthRequired(scopes []string) gin.HandlerFunc {
 			return
 		}
 
-		authHeader := c.Request.Header.Get("Authorization")
-
-		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "missing authorization header, expected format: \"Bearer token\""})
-			return
-		}
-
-		authHeaderParts := strings.SplitN(authHeader, " ", expectedAuthHeaderParts)
-
-		if !(len(authHeaderParts) == expectedAuthHeaderParts && strings.ToLower(authHeaderParts[0]) == "bearer") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "invalid authorization header, expected format: \"Bearer token\""})
-			return
-		}
-
-		rawToken := authHeaderParts[1]
-
-		tok, err := jwt.ParseSigned(rawToken)
+		cm, err := m.VerifyToken(c, scopes)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "unable to parse auth token"})
+			ginauth.AbortBecauseOfError(c, err)
 			return
 		}
 
-		if tok.Headers[0].KeyID == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "unable to parse auth token header"})
-			return
-		}
-
-		key := m.getJWKS(tok.Headers[0].KeyID)
-		if key == nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "invalid token signing key"})
-			return
-		}
-
-		cl := jwt.Claims{}
-		sc := map[string]interface{}{}
-
-		if err := tok.Claims(key, &cl, &sc); err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "unable to validate auth token"})
-			return
-		}
-
-		err = cl.Validate(jwt.Expected{
-			Issuer:   m.config.Issuer,
-			Audience: jwt.Audience{m.config.Audience},
-			Time:     time.Now(),
-		})
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "invalid auth token", "error": err.Error()})
-			return
-		}
-
-		var roles []string
-		switch r := sc[m.config.RolesClaim].(type) {
-		case string:
-			roles = strings.Split(r, " ")
-		case []interface{}:
-			for _, i := range r {
-				roles = append(roles, i.(string))
-			}
-		}
-
-		if !hasScope(roles, scopes) {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"message": "not authorized, missing required scope"})
-			return
-		}
-
-		var user string
-		switch u := sc[m.config.UsernameClaim].(type) {
-		case string:
-			user = u
-		default:
-			user = cl.Subject
-		}
-
-		c.Set(contextKeySubject, cl.Subject)
-		c.Set(contextKeyUser, user)
+		c.Set(contextKeySubject, cm.Subject)
+		c.Set(contextKeyUser, cm.User)
 	}
 }
 
@@ -152,6 +170,10 @@ func (m *Middleware) refreshJWKS() error {
 	}
 
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%w: %s", ginauth.ErrMiddlewareRemote, resp.Body)
+	}
 
 	return json.NewDecoder(resp.Body).Decode(&m.cachedJWKS)
 }
