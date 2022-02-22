@@ -195,7 +195,7 @@ func TestMultitokenMiddlewareValidatesTokens(t *testing.T) {
 
 			cfg1 := ginjwt.AuthConfig{Enabled: true, Audience: tt.middlewareAud, Issuer: tt.middlewareIss, JWKSURI: jwksURI1}
 			cfg2 := ginjwt.AuthConfig{Enabled: true, Audience: tt.middlewareAud, Issuer: tt.middlewareIss, JWKSURI: jwksURI2}
-			authMW, err := ginjwt.NewMultiTokenMiddlwareFromConfigs(cfg1, cfg2)
+			authMW, err := ginjwt.NewMultiTokenMiddlewareFromConfigs(cfg1, cfg2)
 			require.NoError(t, err)
 
 			// We add an extra failing remote middleware, these errors shouldn't surface.
@@ -260,7 +260,7 @@ func TestMultitokenInvalidAuthHeader(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			jwksURI := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 			cfg := ginjwt.AuthConfig{Enabled: true, Audience: "aud", Issuer: "iss", JWKSURI: jwksURI}
-			authMW, err := ginjwt.NewMultiTokenMiddlwareFromConfigs(cfg)
+			authMW, err := ginjwt.NewMultiTokenMiddlewareFromConfigs(cfg)
 			require.NoError(t, err)
 
 			r := gin.New()
