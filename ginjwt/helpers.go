@@ -52,6 +52,10 @@ func RegisterViperOIDCFlags(v *viper.Viper, cmd *cobra.Command) {
 func GetAuthConfigFromFlags(v *viper.Viper) (AuthConfig, error) {
 	var issuer, jwkuri string
 
+	if !v.GetBool("oidc.enabled") {
+		return AuthConfig{}, nil
+	}
+
 	givenIssuers := v.GetStringSlice("oidc.issuer")
 	givenJWKURIs := v.GetStringSlice("oidc.jwksuri")
 
@@ -87,6 +91,10 @@ func GetAuthConfigFromFlags(v *viper.Viper) (AuthConfig, error) {
 // Note that this function will retrieve as many AuthConfigs as the number
 // of issuers and JWK URIs given (which must match)
 func GetAuthConfigsFromFlags(v *viper.Viper) ([]AuthConfig, error) {
+	if !v.GetBool("oidc.enabled") {
+		return []AuthConfig{}, nil
+	}
+
 	givenIssuers := v.GetStringSlice("oidc.issuer")
 	givenJWKURIs := v.GetStringSlice("oidc.jwksuri")
 

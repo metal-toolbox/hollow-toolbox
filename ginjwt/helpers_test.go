@@ -204,6 +204,18 @@ func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "Get no AuthConfigs if OIDC is diabled",
+			args: Args{
+				Enabled:       false,
+				Audience:      "",
+				Issuer:        []string{},
+				JWKSURI:       []string{},
+				RolesClaim:    "",
+				UsernameClaim: "",
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tc := range tests {
@@ -228,13 +240,17 @@ func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 
 			assert.NoError(t, err)
 
-			for idx, gotAT := range gotATs {
-				assert.Equal(t, tc.args.Enabled, gotAT.Enabled)
-				assert.Equal(t, tc.args.Audience, gotAT.Audience)
-				assert.Equal(t, tc.args.Issuer[idx], gotAT.Issuer)
-				assert.Equal(t, tc.args.JWKSURI[idx], gotAT.JWKSURI)
-				assert.Equal(t, tc.args.RolesClaim, gotAT.RolesClaim)
-				assert.Equal(t, tc.args.UsernameClaim, gotAT.UsernameClaim)
+			if v.GetBool("oidc.enabled") {
+				for idx, gotAT := range gotATs {
+					assert.Equal(t, tc.args.Enabled, gotAT.Enabled)
+					assert.Equal(t, tc.args.Audience, gotAT.Audience)
+					assert.Equal(t, tc.args.Issuer[idx], gotAT.Issuer)
+					assert.Equal(t, tc.args.JWKSURI[idx], gotAT.JWKSURI)
+					assert.Equal(t, tc.args.RolesClaim, gotAT.RolesClaim)
+					assert.Equal(t, tc.args.UsernameClaim, gotAT.UsernameClaim)
+				}
+			} else {
+				assert.Empty(t, gotATs)
 			}
 		})
 	}
