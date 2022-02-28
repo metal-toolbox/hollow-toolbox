@@ -6,6 +6,16 @@ import (
 	"github.com/spf13/viper"
 )
 
+// OIDCConfig provides the configuration for the authentication service
+type OIDCConfig struct {
+	Enabled       bool   `yaml:"enabled"`
+	Audience      string `yaml:"audience"`
+	Issuer        string `yaml:"issuer"`
+	JWKSURI       string `yaml:"jwsuri"`
+	RolesClaim    string `yaml:"claims.roles"`
+	UsernameClaim string `yaml:"claims.user"`
+}
+
 // RegisterViperOIDCFlags ensures that the given Viper and cobra.Command instances
 // have the following command line/configuration flags registered:
 //
@@ -27,16 +37,6 @@ import (
 func RegisterViperOIDCFlags(v *viper.Viper, cmd *cobra.Command) {
 	cmd.Flags().Bool("oidc", true, "use oidc auth")
 	ViperBindFlag("oidc.enabled", cmd.Flags().Lookup("oidc"))
-	cmd.Flags().String("oidc-aud", "", "expected audience on OIDC JWT")
-	ViperBindFlag("oidc.audience", cmd.Flags().Lookup("oidc-aud"))
-	cmd.Flags().StringSlice("oidc-issuer", []string{}, "expected issuer of OIDC JWT")
-	ViperBindFlag("oidc.issuer", cmd.Flags().Lookup("oidc-issuer"))
-	cmd.Flags().StringSlice("oidc-jwksuri", []string{}, "URI for JWKS listing for JWTs")
-	ViperBindFlag("oidc.jwksuri", cmd.Flags().Lookup("oidc-jwksuri"))
-	cmd.Flags().String("oidc-roles-claim", "claim", "field containing the permissions of an OIDC JWT")
-	ViperBindFlag("oidc.claims.roles", cmd.Flags().Lookup("oidc-roles-claim"))
-	cmd.Flags().String("oidc-username-claim", "", "additional fields to output in logs from the JWT token, ex (email)")
-	ViperBindFlag("oidc.claims.username", cmd.Flags().Lookup("oidc-username-claim"))
 }
 
 // GetAuthConfigFromFlags builds an AuthConfig object from flags provided by
@@ -47,36 +47,40 @@ func RegisterViperOIDCFlags(v *viper.Viper, cmd *cobra.Command) {
 //
 //		ginjwt.GetAuthConfigFromFlags(viper.GetViper())
 //
-// Note that when using this function, this will retrieve the first
-// issuer and JWK URI.
+// Note that when using this function configuration
 func GetAuthConfigFromFlags(v *viper.Viper) (AuthConfig, error) {
-	var issuer, jwkuri string
+	oidc := v.Get("oidc")
 
-	if !v.GetBool("oidc.enabled") {
+	authConfig, ok := oidc.([]OIDCConfig)
+	if !ok {
+		return AuthConfig{}, ErrInvalidAuthConfig
+	}
+
+	if len(authConfig) == 0 {
+		return AuthConfig{}, ErrMissingAuthConfig
+	}
+
+	config := authConfig[0]
+
+	if !config.Enabled {
 		return AuthConfig{}, nil
 	}
 
-	givenIssuers := v.GetStringSlice("oidc.issuer")
-	givenJWKURIs := v.GetStringSlice("oidc.jwksuri")
-
-	if len(givenIssuers) == 0 {
+	if config.Issuer == "" {
 		return AuthConfig{}, ErrMissingIssuerFlag
 	}
 
-	if len(givenJWKURIs) == 0 {
+	if config.JWKSURI == "" {
 		return AuthConfig{}, ErrMissingJWKURIFlag
 	}
 
-	issuer = givenIssuers[0]
-	jwkuri = givenJWKURIs[0]
-
 	return AuthConfig{
-		Enabled:       v.GetBool("oidc.enabled"),
-		Audience:      v.GetString("oidc.audience"),
-		Issuer:        issuer,
-		JWKSURI:       jwkuri,
-		RolesClaim:    v.GetString("oidc.claims.roles"),
-		UsernameClaim: v.GetString("oidc.claims.username"),
+		Enabled:       config.Enabled,
+		Audience:      config.Audience,
+		Issuer:        config.Issuer,
+		JWKSURI:       config.JWKSURI,
+		RolesClaim:    config.RolesClaim,
+		UsernameClaim: config.UsernameClaim,
 	}, nil
 }
 
@@ -91,31 +95,39 @@ func GetAuthConfigFromFlags(v *viper.Viper) (AuthConfig, error) {
 // Note that this function will retrieve as many AuthConfigs as the number
 // of issuers and JWK URIs given (which must match)
 func GetAuthConfigsFromFlags(v *viper.Viper) ([]AuthConfig, error) {
-	if !v.GetBool("oidc.enabled") {
-		return []AuthConfig{}, nil
+	oidc := v.Get("oidc")
+
+	authConfigs, ok := oidc.([]OIDCConfig)
+	if !ok {
+		return []AuthConfig{}, ErrInvalidAuthConfig
 	}
 
-	givenIssuers := v.GetStringSlice("oidc.issuer")
-	givenJWKURIs := v.GetStringSlice("oidc.jwksuri")
-
-	switch {
-	case len(givenIssuers) == 0:
-		return nil, ErrMissingIssuerFlag
-	case len(givenJWKURIs) == 0:
-		return nil, ErrMissingJWKURIFlag
-	case len(givenIssuers) != len(givenJWKURIs):
-		return nil, ErrIssuersDontMatchJWKURIs
+	if len(authConfigs) == 0 {
+		return []AuthConfig{}, ErrMissingAuthConfig
 	}
 
-	authcfgs := make([]AuthConfig, len(givenIssuers))
-	for idx := range givenIssuers {
-		authcfgs[idx] = AuthConfig{
-			Enabled:       v.GetBool("oidc.enabled"),
-			Audience:      v.GetString("oidc.audience"),
-			Issuer:        givenIssuers[idx],
-			JWKSURI:       givenJWKURIs[idx],
-			RolesClaim:    v.GetString("oidc.claims.roles"),
-			UsernameClaim: v.GetString("oidc.claims.username"),
+	var authcfgs []AuthConfig
+
+	for _, c := range authConfigs {
+		if c.Enabled {
+			if c.Issuer == "" {
+				return []AuthConfig{}, ErrMissingIssuerFlag
+			}
+
+			if c.JWKSURI == "" {
+				return []AuthConfig{}, ErrMissingJWKURIFlag
+			}
+
+			authcfgs = append(authcfgs,
+				AuthConfig{
+					Enabled:       c.Enabled,
+					Audience:      c.Audience,
+					Issuer:        c.Issuer,
+					JWKSURI:       c.JWKSURI,
+					RolesClaim:    c.RolesClaim,
+					UsernameClaim: c.UsernameClaim,
+				},
+			)
 		}
 	}
 
