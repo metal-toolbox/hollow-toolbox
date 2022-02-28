@@ -6,16 +6,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// OIDCConfig provides the configuration for the authentication service
-type OIDCConfig struct {
-	Enabled       bool   `yaml:"enabled"`
-	Audience      string `yaml:"audience"`
-	Issuer        string `yaml:"issuer"`
-	JWKSURI       string `yaml:"jwsuri"`
-	RolesClaim    string `yaml:"claims.roles"`
-	UsernameClaim string `yaml:"claims.user"`
-}
-
 // RegisterViperOIDCFlags ensures that the given Viper and cobra.Command instances
 // have the following command line/configuration flags registered:
 //
@@ -29,10 +19,6 @@ type OIDCConfig struct {
 // A call to this would normally look as follows:
 //
 //		ginjwt.RegisterViperOIDCFlags(viper.GetViper(), serveCmd)
-//
-// Note that when specifying multiple issuers and JWK URIs, the amounts must match (e.g.
-// there must be as many issuers as there are JWK URIs). The order of how these are specified matters
-// too, the first issuer will match the first JWK URI when building an AuthConfig.
 //
 func RegisterViperOIDCFlags(v *viper.Viper, cmd *cobra.Command) {
 	cmd.Flags().Bool("oidc", true, "use oidc auth")
@@ -51,9 +37,16 @@ func RegisterViperOIDCFlags(v *viper.Viper, cmd *cobra.Command) {
 func GetAuthConfigFromFlags(v *viper.Viper) (AuthConfig, error) {
 	oidc := v.Get("oidc")
 
-	authConfig, ok := oidc.([]OIDCConfig)
+	authConfig, ok := oidc.([]AuthConfig)
 	if !ok {
-		return AuthConfig{}, ErrInvalidAuthConfig
+		// backwards compatible to single entry
+		c, ok := oidc.(AuthConfig)
+		if !ok {
+			return AuthConfig{}, ErrInvalidAuthConfig
+		}
+
+		// Append single config to what would be an empty list
+		authConfig = append(authConfig, c)
 	}
 
 	if len(authConfig) == 0 {
@@ -97,7 +90,7 @@ func GetAuthConfigFromFlags(v *viper.Viper) (AuthConfig, error) {
 func GetAuthConfigsFromFlags(v *viper.Viper) ([]AuthConfig, error) {
 	oidc := v.Get("oidc")
 
-	authConfigs, ok := oidc.([]OIDCConfig)
+	authConfigs, ok := oidc.([]AuthConfig)
 	if !ok {
 		return []AuthConfig{}, ErrInvalidAuthConfig
 	}

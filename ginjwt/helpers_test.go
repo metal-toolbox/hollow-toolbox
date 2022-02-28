@@ -10,15 +10,97 @@ import (
 	"go.hollow.sh/toolbox/ginjwt"
 )
 
-func TestRegisterViperOIDCFlags(t *testing.T) {
+func TestRegisterViperOIDCFlagsSingleProvider(t *testing.T) {
 	tests := []struct {
 		name               string
-		expectedAuthConfig []ginjwt.OIDCConfig
+		expectedAuthConfig ginjwt.AuthConfig
 		wantErr            bool
 	}{
 		{
 			name: "Get AuthConfig from parameters scenario 1",
-			expectedAuthConfig: []ginjwt.OIDCConfig{
+			expectedAuthConfig: ginjwt.AuthConfig{
+
+				Enabled:       true,
+				Audience:      "tacos",
+				Issuer:        "are",
+				JWKSURI:       "https://bit.ly/3HlVmWp",
+				RolesClaim:    "pretty",
+				UsernameClaim: "awesome",
+			},
+		},
+		{
+			name: "Get AuthConfig from parameters scenario 2",
+			expectedAuthConfig: ginjwt.AuthConfig{
+
+				Enabled:       true,
+				Audience:      "beer",
+				Issuer:        "is",
+				JWKSURI:       "https://bit.ly/3HlVmWp",
+				RolesClaim:    "quite",
+				UsernameClaim: "tasty",
+			},
+		},
+		{
+			name: "Get AuthConfig fails due to missing issuer",
+			expectedAuthConfig: ginjwt.AuthConfig{
+				Enabled:       true,
+				Audience:      "beer",
+				Issuer:        "",
+				JWKSURI:       "https://bit.ly/3HlVmWp",
+				RolesClaim:    "quite",
+				UsernameClaim: "tasty",
+			},
+			wantErr: true,
+		},
+
+		{
+			name: "Get AuthConfig fails due to missing JWK URI",
+			expectedAuthConfig: ginjwt.AuthConfig{
+				Enabled:       true,
+				Audience:      "beer",
+				Issuer:        "is",
+				JWKSURI:       "",
+				RolesClaim:    "quite",
+				UsernameClaim: "tasty",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			v := viper.New()
+			cmd := &cobra.Command{}
+
+			ginjwt.RegisterViperOIDCFlags(v, cmd)
+
+			v.Set("oidc", tc.expectedAuthConfig)
+
+			gotAT, err := ginjwt.GetAuthConfigFromFlags(v)
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+
+				assert.Equal(t, tc.expectedAuthConfig.Enabled, gotAT.Enabled)
+				assert.Equal(t, tc.expectedAuthConfig.Audience, gotAT.Audience)
+				assert.Equal(t, tc.expectedAuthConfig.Issuer, gotAT.Issuer)
+				assert.Equal(t, tc.expectedAuthConfig.JWKSURI, gotAT.JWKSURI)
+				assert.Equal(t, tc.expectedAuthConfig.RolesClaim, gotAT.RolesClaim)
+				assert.Equal(t, tc.expectedAuthConfig.UsernameClaim, gotAT.UsernameClaim)
+			}
+		})
+	}
+}
+
+func TestRegisterViperOIDCFlags(t *testing.T) {
+	tests := []struct {
+		name               string
+		expectedAuthConfig []ginjwt.AuthConfig
+		wantErr            bool
+	}{
+		{
+			name: "Get AuthConfig from parameters scenario 1",
+			expectedAuthConfig: []ginjwt.AuthConfig{
 				{
 					Enabled:       true,
 					Audience:      "tacos",
@@ -31,7 +113,7 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 		},
 		{
 			name: "Get AuthConfig from parameters scenario 2",
-			expectedAuthConfig: []ginjwt.OIDCConfig{
+			expectedAuthConfig: []ginjwt.AuthConfig{
 				{
 					Enabled:       true,
 					Audience:      "beer",
@@ -44,7 +126,7 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 		},
 		{
 			name: "Get AuthConfig fails due to missing issuer",
-			expectedAuthConfig: []ginjwt.OIDCConfig{
+			expectedAuthConfig: []ginjwt.AuthConfig{
 				{
 					Enabled:       true,
 					Audience:      "beer",
@@ -59,7 +141,7 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 
 		{
 			name: "Get AuthConfig fails due to missing JWK URI",
-			expectedAuthConfig: []ginjwt.OIDCConfig{
+			expectedAuthConfig: []ginjwt.AuthConfig{
 				{
 					Enabled:       true,
 					Audience:      "beer",
@@ -101,13 +183,13 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 	tests := []struct {
 		name                string
-		config              []ginjwt.OIDCConfig
+		config              []ginjwt.AuthConfig
 		expectedAuthConfigs []ginjwt.AuthConfig
 		wantErr             bool
 	}{
 		{
 			name: "Get AuthConfig from parameters with one issuer and JWK URI",
-			config: []ginjwt.OIDCConfig{
+			config: []ginjwt.AuthConfig{
 				{
 					Enabled:       true,
 					Audience:      "tacos",
@@ -130,7 +212,7 @@ func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 		},
 		{
 			name: "Get AuthConfig from parameters with two valid configs",
-			config: []ginjwt.OIDCConfig{
+			config: []ginjwt.AuthConfig{
 				{
 					Enabled:       true,
 					Audience:      "Hey Jude",
@@ -169,7 +251,7 @@ func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 		},
 		{
 			name: "Get AuthConfig fails due to missing issuer",
-			config: []ginjwt.OIDCConfig{
+			config: []ginjwt.AuthConfig{
 				{
 					Enabled:       true,
 					Audience:      "beer",
@@ -183,7 +265,7 @@ func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 		},
 		{
 			name: "Get AuthConfig fails due to missing JWK URI",
-			config: []ginjwt.OIDCConfig{
+			config: []ginjwt.AuthConfig{
 				{
 					Enabled:       true,
 					Audience:      "beer",
@@ -197,7 +279,7 @@ func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 		},
 		{
 			name: "Get no AuthConfigs if OIDC is diabled",
-			config: []ginjwt.OIDCConfig{
+			config: []ginjwt.AuthConfig{
 				{
 					Enabled:       false,
 					Audience:      "",
