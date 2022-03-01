@@ -10,7 +10,7 @@ import (
 	"go.hollow.sh/toolbox/ginjwt"
 )
 
-func TestRegisterViperOIDCFlags(t *testing.T) {
+func TestRegisterViperOIDCFlagsSingleProvider(t *testing.T) {
 	tests := []struct {
 		name               string
 		expectedAuthConfig ginjwt.AuthConfig
@@ -73,12 +73,8 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 
 			v.Set("oidc.enabled", tc.expectedAuthConfig.Enabled)
 			v.Set("oidc.audience", tc.expectedAuthConfig.Audience)
-			if tc.expectedAuthConfig.Issuer != "" {
-				v.Set("oidc.issuer", []string{tc.expectedAuthConfig.Issuer})
-			}
-			if tc.expectedAuthConfig.JWKSURI != "" {
-				v.Set("oidc.jwksuri", []string{tc.expectedAuthConfig.JWKSURI})
-			}
+			v.Set("oidc.issuer", tc.expectedAuthConfig.Issuer)
+			v.Set("oidc.jwksuri", tc.expectedAuthConfig.JWKSURI)
 			v.Set("oidc.claims.roles", tc.expectedAuthConfig.RolesClaim)
 			v.Set("oidc.claims.username", tc.expectedAuthConfig.UsernameClaim)
 
@@ -87,7 +83,6 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-
 				assert.Equal(t, tc.expectedAuthConfig.Enabled, gotAT.Enabled)
 				assert.Equal(t, tc.expectedAuthConfig.Audience, gotAT.Audience)
 				assert.Equal(t, tc.expectedAuthConfig.Issuer, gotAT.Issuer)
@@ -99,31 +94,198 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 	}
 }
 
-func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
-	type Args struct {
-		Enabled       bool
-		Audience      string
-		Issuer        []string
-		JWKSURI       []string
-		RolesClaim    string
-		UsernameClaim string
-	}
+func TestRegisterViperOIDCFlags(t *testing.T) {
+	tests := []struct {
+		name               string
+		config             []ginjwt.OIDCConfig
+		expectedAuthConfig []ginjwt.AuthConfig
+		wantErr            bool
+	}{
+		{
+			name: "Get AuthConfig from parameters scenario 1",
+			config: []ginjwt.OIDCConfig{
+				{
+					Enabled:  true,
+					Audience: "tacos",
+					Issuer:   "are",
+					JWKSURI:  "https://bit.ly/3HlVmWp",
+					Claims: ginjwt.Claims{
+						Roles:    "pretty",
+						Username: "awesome",
+					},
+				},
+			},
+			expectedAuthConfig: []ginjwt.AuthConfig{
+				{
+					Enabled:       true,
+					Audience:      "tacos",
+					Issuer:        "are",
+					JWKSURI:       "https://bit.ly/3HlVmWp",
+					RolesClaim:    "pretty",
+					UsernameClaim: "awesome",
+				},
+			},
+		},
+		{
+			name: "Get AuthConfig from parameters scenario 2",
+			config: []ginjwt.OIDCConfig{
+				{
+					Enabled:  true,
+					Audience: "beer",
+					Issuer:   "is",
+					JWKSURI:  "https://bit.ly/3HlVmWp",
+					Claims: ginjwt.Claims{
+						Roles:    "quite",
+						Username: "tasty",
+					},
+				},
+			},
+			expectedAuthConfig: []ginjwt.AuthConfig{
+				{
+					Enabled:       true,
+					Audience:      "beer",
+					Issuer:        "is",
+					JWKSURI:       "https://bit.ly/3HlVmWp",
+					RolesClaim:    "quite",
+					UsernameClaim: "tasty",
+				},
+			},
+		},
+		{
+			name: "Get AuthConfig from parameters only return first",
+			config: []ginjwt.OIDCConfig{
+				{
+					Enabled:  true,
+					Audience: "beer",
+					Issuer:   "is",
+					JWKSURI:  "https://bit.ly/3HlVmWp",
+					Claims: ginjwt.Claims{
+						Roles:    "quite",
+						Username: "tasty",
+					},
+				},
+				{
+					Enabled:  true,
+					Audience: "beer",
+					Issuer:   "isnt",
+					JWKSURI:  "https://bit.ly/3HlVmAc",
+					Claims: ginjwt.Claims{
+						Roles:    "that",
+						Username: "tasty",
+					},
+				},
+			},
+			expectedAuthConfig: []ginjwt.AuthConfig{
+				{
+					Enabled:       true,
+					Audience:      "beer",
+					Issuer:        "is",
+					JWKSURI:       "https://bit.ly/3HlVmWp",
+					RolesClaim:    "quite",
+					UsernameClaim: "tasty",
+				},
+			},
+		},
+		{
+			name: "Get AuthConfig fails due to missing issuer",
+			config: []ginjwt.OIDCConfig{
+				{
+					Enabled:  true,
+					Audience: "beer",
+					Issuer:   "",
+					JWKSURI:  "https://bit.ly/3HlVmWp",
+					Claims: ginjwt.Claims{
+						Roles:    "quite",
+						Username: "tasty",
+					},
+				},
+			},
+			expectedAuthConfig: []ginjwt.AuthConfig{
+				{
+					Enabled:       true,
+					Audience:      "beer",
+					Issuer:        "",
+					JWKSURI:       "https://bit.ly/3HlVmWp",
+					RolesClaim:    "quite",
+					UsernameClaim: "tasty",
+				},
+			},
+			wantErr: true,
+		},
 
+		{
+			name: "Get AuthConfig fails due to missing JWK URI",
+			config: []ginjwt.OIDCConfig{
+				{
+					Enabled:  true,
+					Audience: "beer",
+					Issuer:   "is",
+					JWKSURI:  "",
+					Claims: ginjwt.Claims{
+						Roles:    "quite",
+						Username: "tasty",
+					},
+				},
+			},
+			expectedAuthConfig: []ginjwt.AuthConfig{
+				{
+					Enabled:       true,
+					Audience:      "beer",
+					Issuer:        "is",
+					JWKSURI:       "",
+					RolesClaim:    "quite",
+					UsernameClaim: "tasty",
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			v := viper.New()
+			cmd := &cobra.Command{}
+
+			ginjwt.RegisterViperOIDCFlags(v, cmd)
+
+			v.Set("oidc", tc.config)
+
+			gotAT, err := ginjwt.GetAuthConfigFromFlags(v)
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+
+				assert.Equal(t, tc.expectedAuthConfig[0].Enabled, gotAT.Enabled)
+				assert.Equal(t, tc.expectedAuthConfig[0].Audience, gotAT.Audience)
+				assert.Equal(t, tc.expectedAuthConfig[0].Issuer, gotAT.Issuer)
+				assert.Equal(t, tc.expectedAuthConfig[0].JWKSURI, gotAT.JWKSURI)
+				assert.Equal(t, tc.expectedAuthConfig[0].RolesClaim, gotAT.RolesClaim)
+				assert.Equal(t, tc.expectedAuthConfig[0].UsernameClaim, gotAT.UsernameClaim)
+			}
+		})
+	}
+}
+
+func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 	tests := []struct {
 		name                string
-		args                Args
+		config              []ginjwt.OIDCConfig
 		expectedAuthConfigs []ginjwt.AuthConfig
 		wantErr             bool
 	}{
 		{
 			name: "Get AuthConfig from parameters with one issuer and JWK URI",
-			args: Args{
-				Enabled:       true,
-				Audience:      "tacos",
-				Issuer:        []string{"are"},
-				JWKSURI:       []string{"https://bit.ly/3HlVmWp"},
-				RolesClaim:    "pretty",
-				UsernameClaim: "awesome",
+			config: []ginjwt.OIDCConfig{
+				{
+					Enabled:  true,
+					Audience: "tacos",
+					Issuer:   "are",
+					JWKSURI:  "https://bit.ly/3HlVmWp",
+					Claims: ginjwt.Claims{
+						Roles:    "pretty",
+						Username: "awesome",
+					},
+				},
 			},
 			expectedAuthConfigs: []ginjwt.AuthConfig{
 				{
@@ -137,17 +299,28 @@ func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 			},
 		},
 		{
-			name: "Get AuthConfig from parameters with two issuers and JWK URIs",
-			args: Args{
-				Enabled:  true,
-				Audience: "Hey Jude",
-				Issuer:   []string{"don't make it bad", "don't be afraid"},
-				JWKSURI: []string{
-					"take a sad song and make it better",
-					"You were made to go out and get her",
+			name: "Get AuthConfig from parameters with two valid configs",
+			config: []ginjwt.OIDCConfig{
+				{
+					Enabled:  true,
+					Audience: "Hey Jude",
+					Issuer:   "don't make it bad",
+					JWKSURI:  "take a sad song and make it better",
+					Claims: ginjwt.Claims{
+						Roles:    "Na na na nananana",
+						Username: "nannana, hey Jude...",
+					},
 				},
-				RolesClaim:    "Na na na nananana",
-				UsernameClaim: "nannana, hey Jude...",
+				{
+					Enabled:  true,
+					Audience: "Hey Jude",
+					Issuer:   "don't be afraid",
+					JWKSURI:  "You were made to go out and get her",
+					Claims: ginjwt.Claims{
+						Roles:    "Na na na nananana",
+						Username: "nannana, hey Jude...",
+					},
+				},
 			},
 			expectedAuthConfigs: []ginjwt.AuthConfig{
 				{
@@ -170,49 +343,49 @@ func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 		},
 		{
 			name: "Get AuthConfig fails due to missing issuer",
-			args: Args{
-				Enabled:       true,
-				Audience:      "beer",
-				Issuer:        []string{},
-				JWKSURI:       []string{"https://bit.ly/3HlVmWp"},
-				RolesClaim:    "quite",
-				UsernameClaim: "tasty",
+			config: []ginjwt.OIDCConfig{
+				{
+					Enabled:  true,
+					Audience: "beer",
+					Issuer:   "",
+					JWKSURI:  "https://bit.ly/3HlVmWp",
+					Claims: ginjwt.Claims{
+						Roles:    "quite",
+						Username: "tasty",
+					},
+				},
 			},
 			wantErr: true,
 		},
 		{
 			name: "Get AuthConfig fails due to missing JWK URI",
-			args: Args{
-				Enabled:       true,
-				Audience:      "beer",
-				Issuer:        []string{"is"},
-				JWKSURI:       nil,
-				RolesClaim:    "quite",
-				UsernameClaim: "tasty",
-			},
-			wantErr: true,
-		},
-		{
-			name: "Get AuthConfig fails due to missing number of issuers not matching number of JWK URIs",
-			args: Args{
-				Enabled:       true,
-				Audience:      "nana",
-				Issuer:        []string{"nana", "nana", "nana"},
-				JWKSURI:       []string{"nana"},
-				RolesClaim:    "nana na...",
-				UsernameClaim: "BATMAN!",
+			config: []ginjwt.OIDCConfig{
+				{
+					Enabled:  true,
+					Audience: "beer",
+					Issuer:   "is",
+					JWKSURI:  "",
+					Claims: ginjwt.Claims{
+						Roles:    "quite",
+						Username: "tasty",
+					},
+				},
 			},
 			wantErr: true,
 		},
 		{
 			name: "Get no AuthConfigs if OIDC is diabled",
-			args: Args{
-				Enabled:       false,
-				Audience:      "",
-				Issuer:        []string{},
-				JWKSURI:       []string{},
-				RolesClaim:    "",
-				UsernameClaim: "",
+			config: []ginjwt.OIDCConfig{
+				{
+					Enabled:  false,
+					Audience: "",
+					Issuer:   "",
+					JWKSURI:  "",
+					Claims: ginjwt.Claims{
+						Roles:    "",
+						Username: "",
+					},
+				},
 			},
 			wantErr: false,
 		},
@@ -225,14 +398,9 @@ func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 
 			ginjwt.RegisterViperOIDCFlags(v, cmd)
 
-			v.Set("oidc.enabled", tc.args.Enabled)
-			v.Set("oidc.audience", tc.args.Audience)
-			v.Set("oidc.issuer", tc.args.Issuer)
-			v.Set("oidc.jwksuri", tc.args.JWKSURI)
-			v.Set("oidc.claims.roles", tc.args.RolesClaim)
-			v.Set("oidc.claims.username", tc.args.UsernameClaim)
+			v.Set("oidc", tc.config)
 
-			gotATs, err := ginjwt.GetAuthConfigsFromFlags(v)
+			gotACs, err := ginjwt.GetAuthConfigsFromFlags(v)
 			if tc.wantErr {
 				assert.Error(t, err)
 				return
@@ -240,17 +408,13 @@ func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 
 			assert.NoError(t, err)
 
-			if v.GetBool("oidc.enabled") {
-				for idx, gotAT := range gotATs {
-					assert.Equal(t, tc.args.Enabled, gotAT.Enabled)
-					assert.Equal(t, tc.args.Audience, gotAT.Audience)
-					assert.Equal(t, tc.args.Issuer[idx], gotAT.Issuer)
-					assert.Equal(t, tc.args.JWKSURI[idx], gotAT.JWKSURI)
-					assert.Equal(t, tc.args.RolesClaim, gotAT.RolesClaim)
-					assert.Equal(t, tc.args.UsernameClaim, gotAT.UsernameClaim)
-				}
-			} else {
-				assert.Empty(t, gotATs)
+			for idx, ac := range gotACs {
+				assert.Equal(t, tc.config[idx].Enabled, ac.Enabled)
+				assert.Equal(t, tc.config[idx].Audience, ac.Audience)
+				assert.Equal(t, tc.config[idx].Issuer, ac.Issuer)
+				assert.Equal(t, tc.config[idx].JWKSURI, ac.JWKSURI)
+				assert.Equal(t, tc.config[idx].Claims.Roles, ac.RolesClaim)
+				assert.Equal(t, tc.config[idx].Claims.Username, ac.UsernameClaim)
 			}
 		})
 	}
