@@ -66,7 +66,6 @@ func RegisterViperOIDCFlags(v *viper.Viper, cmd *cobra.Command) {
 func GetAuthConfigFromFlags(v *viper.Viper) (AuthConfig, error) {
 	var authConfigs []OIDCConfig
 	if err := v.UnmarshalKey("oidc", &authConfigs); err != nil {
-		// backwards compatible to single entry
 		return AuthConfig{}, ErrInvalidAuthConfig
 	}
 
