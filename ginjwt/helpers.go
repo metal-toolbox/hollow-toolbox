@@ -6,6 +6,16 @@ import (
 	"github.com/spf13/viper"
 )
 
+// OIDCConfig provides the configuration for the authentication service
+type OIDCConfig struct {
+	Enabled       bool   `yaml:"enabled"`
+	Audience      string `yaml:"audience"`
+	Issuer        string `yaml:"issuer"`
+	JWKSURI       string `yaml:"jwsuri"`
+	RolesClaim    string `yaml:"claims.roles"`
+	UsernameClaim string `yaml:"claims.user"`
+}
+
 // RegisterViperOIDCFlags ensures that the given Viper and cobra.Command instances
 // have the following command line/configuration flags registered:
 //
@@ -35,25 +45,22 @@ func RegisterViperOIDCFlags(v *viper.Viper, cmd *cobra.Command) {
 //
 // Note that when using this function configuration
 func GetAuthConfigFromFlags(v *viper.Viper) (AuthConfig, error) {
-	oidc := v.Get("oidc")
-
-	authConfig, ok := oidc.([]AuthConfig)
-	if !ok {
+	var authConfigs []OIDCConfig
+	if err := v.UnmarshalKey("oidc", &authConfigs); err != nil {
 		// backwards compatible to single entry
-		c, ok := oidc.(AuthConfig)
-		if !ok {
+		var ac OIDCConfig
+		if err := v.UnmarshalKey("oidc", &ac); err != nil {
 			return AuthConfig{}, ErrInvalidAuthConfig
 		}
-
 		// Append single config to what would be an empty list
-		authConfig = append(authConfig, c)
+		authConfigs = append(authConfigs, ac)
 	}
 
-	if len(authConfig) == 0 {
+	if len(authConfigs) == 0 {
 		return AuthConfig{}, ErrMissingAuthConfig
 	}
 
-	config := authConfig[0]
+	config := authConfigs[0]
 
 	if !config.Enabled {
 		return AuthConfig{}, nil
@@ -88,10 +95,8 @@ func GetAuthConfigFromFlags(v *viper.Viper) (AuthConfig, error) {
 // Note that this function will retrieve as many AuthConfigs as the number
 // of issuers and JWK URIs given (which must match)
 func GetAuthConfigsFromFlags(v *viper.Viper) ([]AuthConfig, error) {
-	oidc := v.Get("oidc")
-
-	authConfigs, ok := oidc.([]AuthConfig)
-	if !ok {
+	var authConfigs []OIDCConfig
+	if err := v.UnmarshalKey("oidc", &authConfigs); err != nil {
 		return []AuthConfig{}, ErrInvalidAuthConfig
 	}
 
