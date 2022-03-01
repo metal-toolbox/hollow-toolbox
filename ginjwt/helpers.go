@@ -8,12 +8,16 @@ import (
 
 // OIDCConfig provides the configuration for the authentication service
 type OIDCConfig struct {
-	Enabled       bool   `yaml:"enabled"`
-	Audience      string `yaml:"audience"`
-	Issuer        string `yaml:"issuer"`
-	JWKSURI       string `yaml:"jwsuri"`
-	RolesClaim    string `yaml:"claims.roles"`
-	UsernameClaim string `yaml:"claims.user"`
+	Enabled  bool   `yaml:"enabled"`
+	Audience string `yaml:"audience"`
+	Issuer   string `yaml:"issuer"`
+	JWKSURI  string `yaml:"jwsuri"`
+	Claims   Claims `yaml:"claims"`
+}
+
+type Claims struct {
+	Roles    string `yaml:"roles"`
+	Username string `yaml:"username"`
 }
 
 // RegisterViperOIDCFlags ensures that the given Viper and cobra.Command instances
@@ -43,12 +47,7 @@ func GetAuthConfigFromFlags(v *viper.Viper) (AuthConfig, error) {
 	var authConfigs []OIDCConfig
 	if err := v.UnmarshalKey("oidc", &authConfigs); err != nil {
 		// backwards compatible to single entry
-		var ac OIDCConfig
-		if err := v.UnmarshalKey("oidc", &ac); err != nil {
-			return AuthConfig{}, ErrInvalidAuthConfig
-		}
-		// Append single config to what would be an empty list
-		authConfigs = append(authConfigs, ac)
+		return AuthConfig{}, ErrInvalidAuthConfig
 	}
 
 	if len(authConfigs) == 0 {
@@ -74,8 +73,8 @@ func GetAuthConfigFromFlags(v *viper.Viper) (AuthConfig, error) {
 		Audience:      config.Audience,
 		Issuer:        config.Issuer,
 		JWKSURI:       config.JWKSURI,
-		RolesClaim:    config.RolesClaim,
-		UsernameClaim: config.UsernameClaim,
+		RolesClaim:    config.Claims.Roles,
+		UsernameClaim: config.Claims.Username,
 	}, nil
 }
 
@@ -117,8 +116,8 @@ func GetAuthConfigsFromFlags(v *viper.Viper) ([]AuthConfig, error) {
 					Audience:      c.Audience,
 					Issuer:        c.Issuer,
 					JWKSURI:       c.JWKSURI,
-					RolesClaim:    c.RolesClaim,
-					UsernameClaim: c.UsernameClaim,
+					RolesClaim:    c.Claims.Roles,
+					UsernameClaim: c.Claims.Username,
 				},
 			)
 		}
