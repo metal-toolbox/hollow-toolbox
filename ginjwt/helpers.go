@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// OIDCConfig provides the configuration for the authentication service
+// OIDCConfig provides the configuration for the oidc provider auth configuration
 type OIDCConfig struct {
 	Enabled  bool   `yaml:"enabled"`
 	Audience string `yaml:"audience"`
@@ -15,6 +15,7 @@ type OIDCConfig struct {
 	Claims   Claims `yaml:"claims"`
 }
 
+// Claims defines the roles and username claims for the given oidc provider
 type Claims struct {
 	Roles    string `yaml:"roles"`
 	Username string `yaml:"username"`
@@ -29,9 +30,28 @@ type Claims struct {
 //
 //		ginjwt.RegisterViperOIDCFlags(viper.GetViper(), serveCmd)
 //
+// The oidc configuration should be passed in through a yaml file due to the nested
+// structure of the fields, however, if only one oidc provider is used the flag parameters would work
+//
+// * `oidc-aud`: Specifies the expected audience for the JWT token
+// * `oidc-issuer`: Specifies the expected issuer for the JWT token (can be more than one value)
+// * `oidc-jwksuri`: Specifies the JSON Web Key Set (JWKS) URI (can be more than one value).
+// * `oidc-roles-claim`: Specifies the roles to be accepted for the JWT claim.
+// * `oidc-username-claim`: Specifies a username to use for the JWT claim
+//
 func RegisterViperOIDCFlags(v *viper.Viper, cmd *cobra.Command) {
 	cmd.Flags().Bool("oidc", true, "use oidc auth")
 	ViperBindFlag("oidc.enabled", cmd.Flags().Lookup("oidc"))
+	cmd.Flags().String("oidc-aud", "", "expected audience on OIDC JWT")
+	ViperBindFlag("oidc.audience", cmd.Flags().Lookup("oidc-aud"))
+	cmd.Flags().StringSlice("oidc-issuer", []string{}, "expected issuer of OIDC JWT")
+	ViperBindFlag("oidc.issuer", cmd.Flags().Lookup("oidc-issuer"))
+	cmd.Flags().StringSlice("oidc-jwksuri", []string{}, "URI for JWKS listing for JWTs")
+	ViperBindFlag("oidc.jwksuri", cmd.Flags().Lookup("oidc-jwksuri"))
+	cmd.Flags().String("oidc-roles-claim", "claim", "field containing the permissions of an OIDC JWT")
+	ViperBindFlag("oidc.claims.roles", cmd.Flags().Lookup("oidc-roles-claim"))
+	cmd.Flags().String("oidc-username-claim", "", "additional fields to output in logs from the JWT token, ex (email)")
+	ViperBindFlag("oidc.claims.username", cmd.Flags().Lookup("oidc-username-claim"))
 }
 
 // GetAuthConfigFromFlags builds an AuthConfig object from flags provided by
