@@ -20,11 +20,6 @@ type OIDCConfig struct {
 // have the following command line/configuration flags registered:
 //
 // * `oidc`: Enables/disables OIDC Authentication
-// * `oidc-aud`: Specifies the expected audience for the JWT token
-// * `oidc-issuer`: Specifies the expected issuer for the JWT token (can be more than one value)
-// * `oidc-jwksuri`: Specifies the JSON Web Key Set (JWKS) URI (can be more than one value).
-// * `oidc-roles-claim`: Specifies the roles to be accepted for the JWT claim.
-// * `oidc-username-claim`: Specifies a username to use for the JWT claim
 //
 // A call to this would normally look as follows:
 //
