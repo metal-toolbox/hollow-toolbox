@@ -54,9 +54,9 @@ func (rm *RemoteMiddleware) SetMetadata(c *gin.Context, cm ClaimMetadata) {
 	}
 }
 
-// VerifyToken verifies a given token (from the gin Context) against the given scope
+// VerifyTokenWithScopes verifies a given token (from the gin Context) against the given scope
 // using a remote server
-func (rm *RemoteMiddleware) VerifyToken(c *gin.Context, scopes []string) (ClaimMetadata, error) {
+func (rm *RemoteMiddleware) VerifyTokenWithScopes(c *gin.Context, scopes []string) (ClaimMetadata, error) {
 	cli := &http.Client{
 		Timeout: rm.timeout,
 	}
@@ -128,7 +128,7 @@ func (rm *RemoteMiddleware) VerifyToken(c *gin.Context, scopes []string) (ClaimM
 // AuthRequired provides a middleware that ensures a request has authentication
 func (rm *RemoteMiddleware) AuthRequired(scopes []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		cm, err := rm.VerifyToken(c, scopes)
+		cm, err := rm.VerifyTokenWithScopes(c, scopes)
 		if err != nil {
 			AbortBecauseOfError(c, err)
 			return

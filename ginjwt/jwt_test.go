@@ -1,6 +1,7 @@
 package ginjwt_test
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"fmt"
 	"net/http"
@@ -180,7 +181,7 @@ func TestMiddlewareValidatesTokens(t *testing.T) {
 			require.NoError(t, err)
 
 			r := gin.New()
-			r.Use(authMW.AuthRequired(tt.middlewareScopes))
+			r.Use(authMW.AuthRequired(), authMW.RequiredScopes(tt.middlewareScopes))
 			r.GET("/", func(c *gin.Context) {
 				c.JSON(http.StatusOK, "ok")
 			})
@@ -241,7 +242,7 @@ func TestInvalidAuthHeader(t *testing.T) {
 			require.NoError(t, err)
 
 			r := gin.New()
-			r.Use(authMW.AuthRequired([]string{"auth"}))
+			r.Use(authMW.AuthRequired())
 			r.GET("/", func(c *gin.Context) {
 				c.JSON(http.StatusOK, "ok")
 			})
@@ -265,4 +266,92 @@ func TestInvalidJWKURIWithWrongPath(t *testing.T) {
 	_, err := ginjwt.NewAuthMiddleware(cfg)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, ginauth.ErrMiddlewareRemote)
+}
+
+func TestVerifyTokenWithScopes(t *testing.T) {
+	var testCases = []struct {
+		testName         string
+		middlewareAud    string
+		middlewareIss    string
+		middlewareScopes []string
+		signingKey       *rsa.PrivateKey
+		signingKeyID     string
+		claims           jwt.Claims
+		claimScopes      []string
+		wantScopes       []string
+		want             ginauth.ClaimMetadata
+		wantErr          bool
+	}{
+		{
+			"incorrect scopes",
+			"ginjwt.test",
+			"ginjwt.test.issuer",
+			[]string{"adminscope"},
+			ginjwt.TestPrivRSAKey1,
+			ginjwt.TestPrivRSAKey1ID,
+			jwt.Claims{
+				Subject:   "test-user",
+				Issuer:    "ginjwt.test.issuer",
+				NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
+				Audience:  jwt.Audience{"ginjwt.test", "another.test.service"},
+			},
+			[]string{"testScope", "anotherScope", "more-scopes"},
+			[]string{"admin-scopes"},
+			ginauth.ClaimMetadata{},
+			true,
+		},
+		{
+			"happy path",
+			"ginjwt.test",
+			"ginjwt.test.issuer",
+			[]string{"testScope"},
+			ginjwt.TestPrivRSAKey1,
+			ginjwt.TestPrivRSAKey1ID,
+			jwt.Claims{
+				Subject:   "test-user",
+				Issuer:    "ginjwt.test.issuer",
+				NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
+				Audience:  jwt.Audience{"ginjwt.test", "another.test.service"},
+			},
+			[]string{"testScope", "anotherScope", "more-scopes"},
+			[]string{"testScope", "anotherScope", "more-scopes"},
+			ginauth.ClaimMetadata{
+				Subject: "test-user",
+				User:    "test-user",
+				Roles: []string{
+					"testScope",
+					"anotherScope",
+					"more-scopes",
+				},
+			},
+			false,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.testName, func(t *testing.T) {
+			jwksURI := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+			m, err := ginjwt.NewAuthMiddleware(ginjwt.AuthConfig{Enabled: true, Audience: tt.middlewareAud, Issuer: tt.middlewareIss, JWKSURI: jwksURI})
+			assert.NoError(t, err)
+
+			ctx := &gin.Context{}
+			signer := ginjwt.TestHelperMustMakeSigner(jose.RS256, tt.signingKeyID, tt.signingKey)
+			rawToken := ginjwt.TestHelperGetToken(signer, tt.claims, "scope", strings.Join(tt.claimScopes, " "))
+
+			// dummy http request
+			req, _ := http.NewRequest(http.MethodGet, "http://foo.bar", bytes.NewReader([]byte{}))
+			ctx.Request = req
+			ctx.Request.Header.Set("Authorization", fmt.Sprintf("bearer %s", rawToken))
+
+			got, err := m.VerifyTokenWithScopes(ctx, tt.wantScopes)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }

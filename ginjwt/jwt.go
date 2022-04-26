@@ -17,6 +17,7 @@ import (
 const (
 	contextKeySubject       = "jwt.subject"
 	contextKeyUser          = "jwt.user"
+	contextKeyRoles         = "jwt.roles"
 	expectedAuthHeaderParts = 2
 )
 
@@ -73,9 +74,28 @@ func (m *Middleware) SetMetadata(c *gin.Context, cm ginauth.ClaimMetadata) {
 	}
 }
 
-// VerifyToken verifies a JWT token gotten from the gin.Context object against the given scopes.
+// VerifyTokenWithScopes satisfies the goauth.GenericAuthMiddleware interface and exists only for
+// backwards compatibility with that interface.
+func (m *Middleware) VerifyTokenWithScopes(c *gin.Context, scopes []string) (ginauth.ClaimMetadata, error) {
+	cm, err := m.VerifyToken(c)
+	if err != nil {
+		return ginauth.ClaimMetadata{}, err
+	}
+
+	c.Set(contextKeySubject, cm.Subject)
+	c.Set(contextKeyUser, cm.User)
+	c.Set(contextKeyRoles, cm.Roles)
+
+	if err := m.VerifyScopes(c, scopes); err != nil {
+		return ginauth.ClaimMetadata{}, err
+	}
+
+	return cm, nil
+}
+
+// VerifyToken verifies a JWT token gotten from the gin.Context object. This does not validate roles claims/scopes.
 // This implements the GenericMiddleware interface
-func (m *Middleware) VerifyToken(c *gin.Context, scopes []string) (ginauth.ClaimMetadata, error) {
+func (m *Middleware) VerifyToken(c *gin.Context) (ginauth.ClaimMetadata, error) {
 	authHeader := c.Request.Header.Get("Authorization")
 
 	if authHeader == "" {
@@ -130,10 +150,6 @@ func (m *Middleware) VerifyToken(c *gin.Context, scopes []string) (ginauth.Claim
 		}
 	}
 
-	if !hasScope(roles, scopes) {
-		return ginauth.ClaimMetadata{}, ginauth.NewAuthorizationError("not authorized, missing required scope")
-	}
-
 	var user string
 	switch u := sc[m.config.UsernameClaim].(type) {
 	case string:
@@ -142,17 +158,18 @@ func (m *Middleware) VerifyToken(c *gin.Context, scopes []string) (ginauth.Claim
 		user = cl.Subject
 	}
 
-	return ginauth.ClaimMetadata{Subject: cl.Subject, User: user}, nil
+	return ginauth.ClaimMetadata{Subject: cl.Subject, User: user, Roles: roles}, nil
 }
 
-// AuthRequired provides a middleware that ensures a request has authentication
-func (m *Middleware) AuthRequired(scopes []string) gin.HandlerFunc {
+// AuthRequired provides a middleware that ensures a request has authentication.  In order to
+// validate scopes, you also need to call RequireScopes().
+func (m *Middleware) AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !m.config.Enabled {
 			return
 		}
 
-		cm, err := m.VerifyToken(c, scopes)
+		cm, err := m.VerifyToken(c)
 		if err != nil {
 			ginauth.AbortBecauseOfError(c, err)
 			return
@@ -160,7 +177,35 @@ func (m *Middleware) AuthRequired(scopes []string) gin.HandlerFunc {
 
 		c.Set(contextKeySubject, cm.Subject)
 		c.Set(contextKeyUser, cm.User)
+		c.Set(contextKeyRoles, cm.Roles)
 	}
+}
+
+// RequiredScopes provides middleware that validates that the passed list of scopes
+// are included in the role claims.
+func (m *Middleware) RequiredScopes(scopes []string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !m.config.Enabled {
+			return
+		}
+
+		if err := m.VerifyScopes(c, scopes); err != nil {
+			ginauth.AbortBecauseOfError(c, err)
+			return
+		}
+	}
+}
+
+// VerifyScopes verifies role claims added to the gin.Context object.
+// This implements the GenericMiddleware interface
+func (m *Middleware) VerifyScopes(c *gin.Context, scopes []string) error {
+	roles := c.GetStringSlice("jwt.roles")
+
+	if !hasScope(roles, scopes) {
+		return ginauth.NewAuthorizationError("not authorized, missing required scope")
+	}
+
+	return nil
 }
 
 func (m *Middleware) refreshJWKS() error {

@@ -9,11 +9,12 @@ import (
 type ClaimMetadata struct {
 	Subject string
 	User    string
+	Roles   []string
 }
 
 // GenericAuthMiddleware defines middleware that verifies a token coming from a gin.Context.
 // Note that this can be stacked together using the MultiTokenMiddleware construct.
 type GenericAuthMiddleware interface {
-	VerifyToken(*gin.Context, []string) (ClaimMetadata, error)
+	VerifyTokenWithScopes(*gin.Context, []string) (ClaimMetadata, error)
 	SetMetadata(*gin.Context, ClaimMetadata)
 }
