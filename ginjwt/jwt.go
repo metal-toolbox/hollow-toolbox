@@ -182,7 +182,7 @@ func (m *Middleware) AuthRequired() gin.HandlerFunc {
 }
 
 // RequiredScopes provides middleware that validates that the passed list of scopes
-// are included in the role claims.
+// are included in the role claims by checking the values on context.
 func (m *Middleware) RequiredScopes(scopes []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !m.config.Enabled {
