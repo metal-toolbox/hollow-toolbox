@@ -2,6 +2,7 @@ package ginjwt_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -19,34 +20,37 @@ func TestRegisterViperOIDCFlagsSingleProvider(t *testing.T) {
 		{
 			name: "Get AuthConfig from parameters scenario 1",
 			expectedAuthConfig: ginjwt.AuthConfig{
-				Enabled:       true,
-				Audience:      "tacos",
-				Issuer:        "are",
-				JWKSURI:       "https://bit.ly/3HlVmWp",
-				RolesClaim:    "pretty",
-				UsernameClaim: "awesome",
+				Enabled:           true,
+				Audience:          "tacos",
+				Issuer:            "are",
+				JWKSURI:           "https://bit.ly/3HlVmWp",
+				JWKSRemoteTimeout: 10 * time.Second,
+				RolesClaim:        "pretty",
+				UsernameClaim:     "awesome",
 			},
 		},
 		{
 			name: "Get AuthConfig from parameters scenario 2",
 			expectedAuthConfig: ginjwt.AuthConfig{
-				Enabled:       true,
-				Audience:      "beer",
-				Issuer:        "is",
-				JWKSURI:       "https://bit.ly/3HlVmWp",
-				RolesClaim:    "quite",
-				UsernameClaim: "tasty",
+				Enabled:           true,
+				Audience:          "beer",
+				Issuer:            "is",
+				JWKSURI:           "https://bit.ly/3HlVmWp",
+				JWKSRemoteTimeout: 11 * time.Second,
+				RolesClaim:        "quite",
+				UsernameClaim:     "tasty",
 			},
 		},
 		{
 			name: "Get AuthConfig fails due to missing issuer",
 			expectedAuthConfig: ginjwt.AuthConfig{
-				Enabled:       true,
-				Audience:      "beer",
-				Issuer:        "",
-				JWKSURI:       "https://bit.ly/3HlVmWp",
-				RolesClaim:    "quite",
-				UsernameClaim: "tasty",
+				Enabled:           true,
+				Audience:          "beer",
+				Issuer:            "",
+				JWKSURI:           "https://bit.ly/3HlVmWp",
+				JWKSRemoteTimeout: 12 * time.Second,
+				RolesClaim:        "quite",
+				UsernameClaim:     "tasty",
 			},
 			wantErr: true,
 		},
@@ -77,6 +81,7 @@ func TestRegisterViperOIDCFlagsSingleProvider(t *testing.T) {
 			v.Set("oidc.jwksuri", tc.expectedAuthConfig.JWKSURI)
 			v.Set("oidc.claims.roles", tc.expectedAuthConfig.RolesClaim)
 			v.Set("oidc.claims.username", tc.expectedAuthConfig.UsernameClaim)
+			v.Set("oidc.jwksremotetimeout", tc.expectedAuthConfig.JWKSRemoteTimeout)
 
 			gotAT, err := ginjwt.GetAuthConfigFromFlags(v)
 			if tc.wantErr {
@@ -87,6 +92,7 @@ func TestRegisterViperOIDCFlagsSingleProvider(t *testing.T) {
 				assert.Equal(t, tc.expectedAuthConfig.Audience, gotAT.Audience)
 				assert.Equal(t, tc.expectedAuthConfig.Issuer, gotAT.Issuer)
 				assert.Equal(t, tc.expectedAuthConfig.JWKSURI, gotAT.JWKSURI)
+				assert.Equal(t, tc.expectedAuthConfig.JWKSRemoteTimeout, gotAT.JWKSRemoteTimeout)
 				assert.Equal(t, tc.expectedAuthConfig.RolesClaim, gotAT.RolesClaim)
 				assert.Equal(t, tc.expectedAuthConfig.UsernameClaim, gotAT.UsernameClaim)
 			}
@@ -105,10 +111,11 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 			name: "Get AuthConfig from parameters scenario 1",
 			config: []ginjwt.OIDCConfig{
 				{
-					Enabled:  true,
-					Audience: "tacos",
-					Issuer:   "are",
-					JWKSURI:  "https://bit.ly/3HlVmWp",
+					Enabled:           true,
+					Audience:          "tacos",
+					Issuer:            "are",
+					JWKSURI:           "https://bit.ly/3HlVmWp",
+					JWKSRemoteTimeout: 10 * time.Second,
 					Claims: ginjwt.Claims{
 						Roles:    "pretty",
 						Username: "awesome",
@@ -117,17 +124,45 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 			},
 			expectedAuthConfig: []ginjwt.AuthConfig{
 				{
-					Enabled:       true,
-					Audience:      "tacos",
-					Issuer:        "are",
-					JWKSURI:       "https://bit.ly/3HlVmWp",
-					RolesClaim:    "pretty",
-					UsernameClaim: "awesome",
+					Enabled:           true,
+					Audience:          "tacos",
+					Issuer:            "are",
+					JWKSURI:           "https://bit.ly/3HlVmWp",
+					JWKSRemoteTimeout: 10 * time.Second,
+					RolesClaim:        "pretty",
+					UsernameClaim:     "awesome",
 				},
 			},
 		},
 		{
 			name: "Get AuthConfig from parameters scenario 2",
+			config: []ginjwt.OIDCConfig{
+				{
+					Enabled:           true,
+					Audience:          "beer",
+					Issuer:            "is",
+					JWKSURI:           "https://bit.ly/3HlVmWp",
+					JWKSRemoteTimeout: 11 * time.Second,
+					Claims: ginjwt.Claims{
+						Roles:    "quite",
+						Username: "tasty",
+					},
+				},
+			},
+			expectedAuthConfig: []ginjwt.AuthConfig{
+				{
+					Enabled:           true,
+					Audience:          "beer",
+					Issuer:            "is",
+					JWKSURI:           "https://bit.ly/3HlVmWp",
+					JWKSRemoteTimeout: 11 * time.Second,
+					RolesClaim:        "quite",
+					UsernameClaim:     "tasty",
+				},
+			},
+		},
+		{
+			name: "Get AuthConfig from parameters returns valid JWKS remote timeout even if missing",
 			config: []ginjwt.OIDCConfig{
 				{
 					Enabled:  true,
@@ -142,12 +177,13 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 			},
 			expectedAuthConfig: []ginjwt.AuthConfig{
 				{
-					Enabled:       true,
-					Audience:      "beer",
-					Issuer:        "is",
-					JWKSURI:       "https://bit.ly/3HlVmWp",
-					RolesClaim:    "quite",
-					UsernameClaim: "tasty",
+					Enabled:           true,
+					Audience:          "beer",
+					Issuer:            "is",
+					JWKSURI:           "https://bit.ly/3HlVmWp",
+					JWKSRemoteTimeout: 0,
+					RolesClaim:        "quite",
+					UsernameClaim:     "tasty",
 				},
 			},
 		},
@@ -155,20 +191,22 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 			name: "Get AuthConfig from parameters only return first",
 			config: []ginjwt.OIDCConfig{
 				{
-					Enabled:  true,
-					Audience: "beer",
-					Issuer:   "is",
-					JWKSURI:  "https://bit.ly/3HlVmWp",
+					Enabled:           true,
+					Audience:          "beer",
+					Issuer:            "is",
+					JWKSURI:           "https://bit.ly/3HlVmWp",
+					JWKSRemoteTimeout: 12 * time.Second,
 					Claims: ginjwt.Claims{
 						Roles:    "quite",
 						Username: "tasty",
 					},
 				},
 				{
-					Enabled:  true,
-					Audience: "beer",
-					Issuer:   "isnt",
-					JWKSURI:  "https://bit.ly/3HlVmAc",
+					Enabled:           true,
+					Audience:          "beer",
+					Issuer:            "isnt",
+					JWKSURI:           "https://bit.ly/3HlVmAc",
+					JWKSRemoteTimeout: 12 * time.Second,
 					Claims: ginjwt.Claims{
 						Roles:    "that",
 						Username: "tasty",
@@ -177,12 +215,13 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 			},
 			expectedAuthConfig: []ginjwt.AuthConfig{
 				{
-					Enabled:       true,
-					Audience:      "beer",
-					Issuer:        "is",
-					JWKSURI:       "https://bit.ly/3HlVmWp",
-					RolesClaim:    "quite",
-					UsernameClaim: "tasty",
+					Enabled:           true,
+					Audience:          "beer",
+					Issuer:            "is",
+					JWKSURI:           "https://bit.ly/3HlVmWp",
+					JWKSRemoteTimeout: 12 * time.Second,
+					RolesClaim:        "quite",
+					UsernameClaim:     "tasty",
 				},
 			},
 		},
@@ -190,10 +229,11 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 			name: "Get AuthConfig fails due to missing issuer",
 			config: []ginjwt.OIDCConfig{
 				{
-					Enabled:  true,
-					Audience: "beer",
-					Issuer:   "",
-					JWKSURI:  "https://bit.ly/3HlVmWp",
+					Enabled:           true,
+					Audience:          "beer",
+					Issuer:            "",
+					JWKSURI:           "https://bit.ly/3HlVmWp",
+					JWKSRemoteTimeout: 13 * time.Second,
 					Claims: ginjwt.Claims{
 						Roles:    "quite",
 						Username: "tasty",
@@ -202,25 +242,26 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 			},
 			expectedAuthConfig: []ginjwt.AuthConfig{
 				{
-					Enabled:       true,
-					Audience:      "beer",
-					Issuer:        "",
-					JWKSURI:       "https://bit.ly/3HlVmWp",
-					RolesClaim:    "quite",
-					UsernameClaim: "tasty",
+					Enabled:           true,
+					Audience:          "beer",
+					Issuer:            "",
+					JWKSURI:           "https://bit.ly/3HlVmWp",
+					JWKSRemoteTimeout: 13 * time.Second,
+					RolesClaim:        "quite",
+					UsernameClaim:     "tasty",
 				},
 			},
 			wantErr: true,
 		},
-
 		{
 			name: "Get AuthConfig fails due to missing JWK URI",
 			config: []ginjwt.OIDCConfig{
 				{
-					Enabled:  true,
-					Audience: "beer",
-					Issuer:   "is",
-					JWKSURI:  "",
+					Enabled:           true,
+					Audience:          "beer",
+					Issuer:            "is",
+					JWKSURI:           "",
+					JWKSRemoteTimeout: 14 * time.Second,
 					Claims: ginjwt.Claims{
 						Roles:    "quite",
 						Username: "tasty",
@@ -229,12 +270,13 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 			},
 			expectedAuthConfig: []ginjwt.AuthConfig{
 				{
-					Enabled:       true,
-					Audience:      "beer",
-					Issuer:        "is",
-					JWKSURI:       "",
-					RolesClaim:    "quite",
-					UsernameClaim: "tasty",
+					Enabled:           true,
+					Audience:          "beer",
+					Issuer:            "is",
+					JWKSURI:           "",
+					JWKSRemoteTimeout: 14 * time.Second,
+					RolesClaim:        "quite",
+					UsernameClaim:     "tasty",
 				},
 			},
 			wantErr: true,
@@ -259,6 +301,7 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 				assert.Equal(t, tc.expectedAuthConfig[0].Audience, gotAT.Audience)
 				assert.Equal(t, tc.expectedAuthConfig[0].Issuer, gotAT.Issuer)
 				assert.Equal(t, tc.expectedAuthConfig[0].JWKSURI, gotAT.JWKSURI)
+				assert.Equal(t, tc.expectedAuthConfig[0].JWKSRemoteTimeout, gotAT.JWKSRemoteTimeout)
 				assert.Equal(t, tc.expectedAuthConfig[0].RolesClaim, gotAT.RolesClaim)
 				assert.Equal(t, tc.expectedAuthConfig[0].UsernameClaim, gotAT.UsernameClaim)
 			}
@@ -277,10 +320,11 @@ func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 			name: "Get AuthConfig from parameters with one issuer and JWK URI",
 			config: []ginjwt.OIDCConfig{
 				{
-					Enabled:  true,
-					Audience: "tacos",
-					Issuer:   "are",
-					JWKSURI:  "https://bit.ly/3HlVmWp",
+					Enabled:           true,
+					Audience:          "tacos",
+					Issuer:            "are",
+					JWKSURI:           "https://bit.ly/3HlVmWp",
+					JWKSRemoteTimeout: 10 * time.Second,
 					Claims: ginjwt.Claims{
 						Roles:    "pretty",
 						Username: "awesome",
@@ -289,12 +333,13 @@ func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 			},
 			expectedAuthConfigs: []ginjwt.AuthConfig{
 				{
-					Enabled:       true,
-					Audience:      "tacos",
-					Issuer:        "are",
-					JWKSURI:       "https://bit.ly/3HlVmWp",
-					RolesClaim:    "pretty",
-					UsernameClaim: "awesome",
+					Enabled:           true,
+					Audience:          "tacos",
+					Issuer:            "are",
+					JWKSURI:           "https://bit.ly/3HlVmWp",
+					JWKSRemoteTimeout: 10 * time.Second,
+					RolesClaim:        "pretty",
+					UsernameClaim:     "awesome",
 				},
 			},
 		},
@@ -302,20 +347,22 @@ func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 			name: "Get AuthConfig from parameters with two valid configs",
 			config: []ginjwt.OIDCConfig{
 				{
-					Enabled:  true,
-					Audience: "Hey Jude",
-					Issuer:   "don't make it bad",
-					JWKSURI:  "take a sad song and make it better",
+					Enabled:           true,
+					Audience:          "Hey Jude",
+					Issuer:            "don't make it bad",
+					JWKSURI:           "take a sad song and make it better",
+					JWKSRemoteTimeout: 11 * time.Second,
 					Claims: ginjwt.Claims{
 						Roles:    "Na na na nananana",
 						Username: "nannana, hey Jude...",
 					},
 				},
 				{
-					Enabled:  true,
-					Audience: "Hey Jude",
-					Issuer:   "don't be afraid",
-					JWKSURI:  "You were made to go out and get her",
+					Enabled:           true,
+					Audience:          "Hey Jude",
+					Issuer:            "don't be afraid",
+					JWKSURI:           "You were made to go out and get her",
+					JWKSRemoteTimeout: 12 * time.Second,
 					Claims: ginjwt.Claims{
 						Roles:    "Na na na nananana",
 						Username: "nannana, hey Jude...",
@@ -324,20 +371,22 @@ func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 			},
 			expectedAuthConfigs: []ginjwt.AuthConfig{
 				{
-					Enabled:       true,
-					Audience:      "Hey Jude",
-					Issuer:        "don't make it bad",
-					JWKSURI:       "take a sad song and make it better",
-					RolesClaim:    "Na na na nananana",
-					UsernameClaim: "nannana, hey Jude...",
+					Enabled:           true,
+					Audience:          "Hey Jude",
+					Issuer:            "don't make it bad",
+					JWKSURI:           "take a sad song and make it better",
+					JWKSRemoteTimeout: 11 * time.Second,
+					RolesClaim:        "Na na na nananana",
+					UsernameClaim:     "nannana, hey Jude...",
 				},
 				{
-					Enabled:       true,
-					Audience:      "Hey Jude",
-					Issuer:        "don't be afraid",
-					JWKSURI:       "You were made to go out and get her",
-					RolesClaim:    "Na na na nananana",
-					UsernameClaim: "nannana, hey Jude...",
+					Enabled:           true,
+					Audience:          "Hey Jude",
+					Issuer:            "don't be afraid",
+					JWKSURI:           "You were made to go out and get her",
+					JWKSRemoteTimeout: 12 * time.Second,
+					RolesClaim:        "Na na na nananana",
+					UsernameClaim:     "nannana, hey Jude...",
 				},
 			},
 		},
@@ -413,6 +462,7 @@ func TestRegisterViperOIDCFlagsForMultipleConfigs(t *testing.T) {
 				assert.Equal(t, tc.config[idx].Audience, ac.Audience)
 				assert.Equal(t, tc.config[idx].Issuer, ac.Issuer)
 				assert.Equal(t, tc.config[idx].JWKSURI, ac.JWKSURI)
+				assert.Equal(t, tc.config[idx].JWKSRemoteTimeout, ac.JWKSRemoteTimeout)
 				assert.Equal(t, tc.config[idx].Claims.Roles, ac.RolesClaim)
 				assert.Equal(t, tc.config[idx].Claims.Username, ac.UsernameClaim)
 			}

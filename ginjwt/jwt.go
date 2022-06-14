@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/net/context"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 
@@ -29,13 +30,14 @@ type Middleware struct {
 
 // AuthConfig provides the configuration for the authentication service
 type AuthConfig struct {
-	Enabled       bool
-	Audience      string
-	Issuer        string
-	JWKSURI       string
-	LogFields     []string
-	RolesClaim    string
-	UsernameClaim string
+	Enabled           bool
+	Audience          string
+	Issuer            string
+	JWKSURI           string
+	LogFields         []string
+	RolesClaim        string
+	UsernameClaim     string
+	JWKSRemoteTimeout time.Duration
 }
 
 // NewAuthMiddleware will return an auth middleware configured with the jwt parameters passed in
@@ -209,7 +211,24 @@ func (m *Middleware) VerifyScopes(c *gin.Context, scopes []string) error {
 }
 
 func (m *Middleware) refreshJWKS() error {
-	resp, err := http.Get(m.config.JWKSURI) //nolint:noctx
+	var ctx context.Context
+
+	if m.config.JWKSRemoteTimeout != 0 {
+		var cancel context.CancelFunc
+
+		ctx, cancel = context.WithTimeout(context.Background(), m.config.JWKSRemoteTimeout)
+
+		defer cancel()
+	} else {
+		ctx = context.Background()
+	}
+
+	req, reqerr := http.NewRequestWithContext(ctx, http.MethodGet, m.config.JWKSURI, nil)
+	if reqerr != nil {
+		return reqerr
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
