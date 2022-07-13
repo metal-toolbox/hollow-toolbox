@@ -260,18 +260,24 @@ func (m *Middleware) getJWKS(kid string) *jose.JSONWebKey {
 }
 
 func hasScope(have, needed []string) bool {
-	neededMap := make(map[string]bool)
-	for _, s := range needed {
-		neededMap[s] = true
+	// Short circuit: If we don't need any scopes, we're good. Return true
+	if len(needed) == 0 {
+		return true
 	}
 
+	haveMap := make(map[string]struct{})
 	for _, s := range have {
-		if neededMap[s] {
-			return true
+		haveMap[s] = struct{}{}
+	}
+
+	// Check the scopes we need against what we have. If any are missing, return false
+	for _, s := range needed {
+		if _, ok := haveMap[s]; !ok {
+			return false
 		}
 	}
 
-	return false
+	return true
 }
 
 // GetSubject will return the JWT subject that is saved in the request. This requires that authentication of the request
