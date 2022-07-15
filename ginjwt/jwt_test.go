@@ -447,7 +447,7 @@ func TestVerifyTokenWithScopes(t *testing.T) {
 		wantErr          bool
 	}{
 		{
-			"incorrect scopes",
+			"missing all scopes",
 			"ginjwt.test",
 			"ginjwt.test.issuer",
 			[]string{"adminscope"},
@@ -463,6 +463,48 @@ func TestVerifyTokenWithScopes(t *testing.T) {
 			[]string{"admin-scopes"},
 			ginauth.ClaimMetadata{},
 			true,
+		},
+		{
+			"missing some scopes",
+			"ginjwt.test",
+			"ginjwt.test.issuer",
+			[]string{"adminscope"},
+			ginjwt.TestPrivRSAKey1,
+			ginjwt.TestPrivRSAKey1ID,
+			jwt.Claims{
+				Subject:   "test-user",
+				Issuer:    "ginjwt.test.issuer",
+				NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
+				Audience:  jwt.Audience{"ginjwt.test", "another.test.service"},
+			},
+			[]string{"testScope"},
+			[]string{"testScope", "anotherScope"},
+			ginauth.ClaimMetadata{},
+			true,
+		},
+		{
+			"no wanted scopes",
+			"ginjwt.test",
+			"ginjwt.test.issuer",
+			[]string{"adminscope"},
+			ginjwt.TestPrivRSAKey1,
+			ginjwt.TestPrivRSAKey1ID,
+			jwt.Claims{
+				Subject:   "test-user",
+				Issuer:    "ginjwt.test.issuer",
+				NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
+				Audience:  jwt.Audience{"ginjwt.test", "another.test.service"},
+			},
+			[]string{"admin-scopes"},
+			[]string{},
+			ginauth.ClaimMetadata{
+				Subject: "test-user",
+				User:    "test-user",
+				Roles: []string{
+					"admin-scopes",
+				},
+			},
+			false,
 		},
 		{
 			"happy path",
