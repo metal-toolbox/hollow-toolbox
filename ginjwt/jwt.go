@@ -22,6 +22,16 @@ const (
 	expectedAuthHeaderParts = 2
 )
 
+// RoleValidationStrategy represents a validation strategy for roles.
+type RoleValidationStrategy string
+
+const (
+	// RoleValidationStrategyAny represents validation that any required role exists in the roles claim.
+	RoleValidationStrategyAny RoleValidationStrategy = "any"
+	// RoleValidationStrategyAll represents validation that all required roles exist in the roles claim.
+	RoleValidationStrategyAll RoleValidationStrategy = "all"
+)
+
 // Middleware provides a gin compatible middleware that will authenticate JWT requests
 type Middleware struct {
 	config     AuthConfig
@@ -38,6 +48,8 @@ type AuthConfig struct {
 	RolesClaim        string
 	UsernameClaim     string
 	JWKSRemoteTimeout time.Duration
+	// Role validation strategy for roles claim. Defaults to any if unspecified.
+	RoleValidationStrategy RoleValidationStrategy
 }
 
 // NewAuthMiddleware will return an auth middleware configured with the jwt parameters passed in
@@ -203,7 +215,18 @@ func (m *Middleware) RequiredScopes(scopes []string) gin.HandlerFunc {
 func (m *Middleware) VerifyScopes(c *gin.Context, scopes []string) error {
 	roles := c.GetStringSlice("jwt.roles")
 
-	if !hasScope(roles, scopes) {
+	var rolesSatisfied bool
+
+	switch m.config.RoleValidationStrategy {
+	case "", RoleValidationStrategyAny:
+		rolesSatisfied = hasAnyScope(roles, scopes)
+	case RoleValidationStrategyAll:
+		rolesSatisfied = hasAllScopes(roles, scopes)
+	default:
+		return ErrInvalidAuthConfig
+	}
+
+	if !rolesSatisfied {
 		return ginauth.NewAuthorizationError("not authorized, missing required scope")
 	}
 
@@ -259,7 +282,7 @@ func (m *Middleware) getJWKS(kid string) *jose.JSONWebKey {
 	return &keys[0]
 }
 
-func hasScope(have, needed []string) bool {
+func hasAllScopes(have, needed []string) bool {
 	// Short circuit: If we don't need any scopes, we're good. Return true
 	if len(needed) == 0 {
 		return true
@@ -278,6 +301,27 @@ func hasScope(have, needed []string) bool {
 	}
 
 	return true
+}
+
+func hasAnyScope(have, needed []string) bool {
+	// Short circuit: If we don't need any scopes, we're good. Return true
+	if len(needed) == 0 {
+		return true
+	}
+
+	neededMap := make(map[string]struct{})
+	for _, s := range needed {
+		neededMap[s] = struct{}{}
+	}
+
+	// Check the scopes we need against what we have. If any are present, return true.
+	for _, s := range have {
+		if _, ok := neededMap[s]; ok {
+			return true
+		}
+	}
+
+	return false
 }
 
 // GetSubject will return the JWT subject that is saved in the request. This requires that authentication of the request
