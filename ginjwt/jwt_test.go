@@ -447,81 +447,81 @@ func TestVerifyTokenWithScopes(t *testing.T) {
 		wantErr          bool
 	}{
 		{
-			"missing all scopes",
-			"ginjwt.test",
-			"ginjwt.test.issuer",
-			[]string{"adminscope"},
-			ginjwt.TestPrivRSAKey1,
-			ginjwt.TestPrivRSAKey1ID,
-			jwt.Claims{
+			testName:         "missing all scopes",
+			middlewareAud:    "ginjwt.test",
+			middlewareIss:    "ginjwt.test.issuer",
+			middlewareScopes: []string{"adminscope"},
+			signingKey:       ginjwt.TestPrivRSAKey1,
+			signingKeyID:     ginjwt.TestPrivRSAKey1ID,
+			claims: jwt.Claims{
 				Subject:   "test-user",
 				Issuer:    "ginjwt.test.issuer",
 				NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
 				Audience:  jwt.Audience{"ginjwt.test", "another.test.service"},
 			},
-			[]string{"testScope", "anotherScope", "more-scopes"},
-			[]string{"admin-scopes"},
-			ginauth.ClaimMetadata{},
-			true,
+			claimScopes: []string{"testScope", "anotherScope", "more-scopes"},
+			wantScopes:  []string{"admin-scopes"},
+			want:        ginauth.ClaimMetadata{},
+			wantErr:     true,
 		},
 		{
-			"missing some scopes",
-			"ginjwt.test",
-			"ginjwt.test.issuer",
-			[]string{"adminscope"},
-			ginjwt.TestPrivRSAKey1,
-			ginjwt.TestPrivRSAKey1ID,
-			jwt.Claims{
+			testName:         "missing some scopes",
+			middlewareAud:    "ginjwt.test",
+			middlewareIss:    "ginjwt.test.issuer",
+			middlewareScopes: []string{"adminscope"},
+			signingKey:       ginjwt.TestPrivRSAKey1,
+			signingKeyID:     ginjwt.TestPrivRSAKey1ID,
+			claims: jwt.Claims{
 				Subject:   "test-user",
 				Issuer:    "ginjwt.test.issuer",
 				NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
 				Audience:  jwt.Audience{"ginjwt.test", "another.test.service"},
 			},
-			[]string{"testScope"},
-			[]string{"testScope", "anotherScope"},
-			ginauth.ClaimMetadata{},
-			true,
+			claimScopes: []string{"testScope"},
+			wantScopes:  []string{"testScope", "anotherScope"},
+			want:        ginauth.ClaimMetadata{},
+			wantErr:     true,
 		},
 		{
-			"no wanted scopes",
-			"ginjwt.test",
-			"ginjwt.test.issuer",
-			[]string{"adminscope"},
-			ginjwt.TestPrivRSAKey1,
-			ginjwt.TestPrivRSAKey1ID,
-			jwt.Claims{
+			testName:         "no wanted scopes",
+			middlewareAud:    "ginjwt.test",
+			middlewareIss:    "ginjwt.test.issuer",
+			middlewareScopes: []string{"adminscope"},
+			signingKey:       ginjwt.TestPrivRSAKey1,
+			signingKeyID:     ginjwt.TestPrivRSAKey1ID,
+			claims: jwt.Claims{
 				Subject:   "test-user",
 				Issuer:    "ginjwt.test.issuer",
 				NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
 				Audience:  jwt.Audience{"ginjwt.test", "another.test.service"},
 			},
-			[]string{"admin-scopes"},
-			[]string{},
-			ginauth.ClaimMetadata{
+			claimScopes: []string{"admin-scopes"},
+			wantScopes:  []string{},
+			want: ginauth.ClaimMetadata{
 				Subject: "test-user",
 				User:    "test-user",
 				Roles: []string{
 					"admin-scopes",
 				},
 			},
-			false,
+			wantErr: false,
 		},
 		{
-			"happy path",
-			"ginjwt.test",
-			"ginjwt.test.issuer",
-			[]string{"testScope"},
-			ginjwt.TestPrivRSAKey1,
-			ginjwt.TestPrivRSAKey1ID,
-			jwt.Claims{
+			testName:         "happy path",
+			middlewareAud:    "ginjwt.test",
+			middlewareIss:    "ginjwt.test.issuer",
+			middlewareScopes: []string{"testScope"},
+			signingKey:       ginjwt.TestPrivRSAKey1,
+			signingKeyID:     ginjwt.TestPrivRSAKey1ID,
+			claims: jwt.Claims{
 				Subject:   "test-user",
 				Issuer:    "ginjwt.test.issuer",
 				NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
 				Audience:  jwt.Audience{"ginjwt.test", "another.test.service"},
 			},
-			[]string{"testScope", "anotherScope", "more-scopes"},
-			[]string{"testScope", "anotherScope", "more-scopes"},
-			ginauth.ClaimMetadata{
+			claimScopes: []string{"testScope", "anotherScope", "more-scopes"},
+			wantScopes:  []string{"testScope", "anotherScope", "more-scopes"},
+			want: ginauth.ClaimMetadata{
 				Subject: "test-user",
 				User:    "test-user",
 				Roles: []string{
@@ -530,14 +530,20 @@ func TestVerifyTokenWithScopes(t *testing.T) {
 					"more-scopes",
 				},
 			},
-			false,
+			wantErr: false,
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.testName, func(t *testing.T) {
 			jwksURI := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
-			m, err := ginjwt.NewAuthMiddleware(ginjwt.AuthConfig{Enabled: true, Audience: tt.middlewareAud, Issuer: tt.middlewareIss, JWKSURI: jwksURI})
+			config := ginjwt.AuthConfig{
+				Enabled:  true,
+				Audience: tt.middlewareAud,
+				Issuer:   tt.middlewareIss,
+				JWKSURI:  jwksURI,
+			}
+			m, err := ginjwt.NewAuthMiddleware(config)
 			assert.NoError(t, err)
 
 			ctx := &gin.Context{}
