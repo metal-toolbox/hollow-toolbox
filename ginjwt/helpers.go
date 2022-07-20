@@ -10,12 +10,13 @@ import (
 
 // OIDCConfig provides the configuration for the oidc provider auth configuration
 type OIDCConfig struct {
-	Enabled           bool          `yaml:"enabled"`
-	Audience          string        `yaml:"audience"`
-	Issuer            string        `yaml:"issuer"`
-	JWKSURI           string        `yaml:"jwsuri"`
-	JWKSRemoteTimeout time.Duration `yaml:"jwksremotetimeout"`
-	Claims            Claims        `yaml:"claims"`
+	Enabled                bool                   `yaml:"enabled"`
+	Audience               string                 `yaml:"audience"`
+	Issuer                 string                 `yaml:"issuer"`
+	JWKSURI                string                 `yaml:"jwsuri"`
+	JWKSRemoteTimeout      time.Duration          `yaml:"jwksremotetimeout"`
+	RoleValidationStrategy RoleValidationStrategy `yaml:"rolevalidationstrategy"`
+	Claims                 Claims                 `yaml:"claims"`
 }
 
 // Claims defines the roles and username claims for the given oidc provider
@@ -58,6 +59,8 @@ func RegisterViperOIDCFlags(v *viper.Viper, cmd *cobra.Command) {
 	ViperBindFlag("oidc.claims.username", cmd.Flags().Lookup("oidc-username-claim"))
 	cmd.Flags().Duration("oidc-jwks-remote-timeout", 1*time.Minute, "timeout for remote JWKS fetching")
 	ViperBindFlag("oidc.jwksremotetimeout", cmd.Flags().Lookup("oidc-jwks-remote-timeout"))
+	cmd.Flags().String("oidc-role-validation-strategy", string(RoleValidationStrategyAny), "validation strategy for roles (any or all)")
+	ViperBindFlag("oidc.rolevalidationstrategy", cmd.Flags().Lookup("oidc-role-validation-strategy"))
 }
 
 // GetAuthConfigFromFlags builds an AuthConfig object from flags provided by
@@ -94,13 +97,14 @@ func GetAuthConfigFromFlags(v *viper.Viper) (AuthConfig, error) {
 	}
 
 	return AuthConfig{
-		Enabled:           config.Enabled,
-		Audience:          config.Audience,
-		Issuer:            config.Issuer,
-		JWKSURI:           config.JWKSURI,
-		JWKSRemoteTimeout: config.JWKSRemoteTimeout,
-		RolesClaim:        config.Claims.Roles,
-		UsernameClaim:     config.Claims.Username,
+		Enabled:                config.Enabled,
+		Audience:               config.Audience,
+		Issuer:                 config.Issuer,
+		JWKSURI:                config.JWKSURI,
+		JWKSRemoteTimeout:      config.JWKSRemoteTimeout,
+		RoleValidationStrategy: config.RoleValidationStrategy,
+		RolesClaim:             config.Claims.Roles,
+		UsernameClaim:          config.Claims.Username,
 	}, nil
 }
 
@@ -138,13 +142,14 @@ func GetAuthConfigsFromFlags(v *viper.Viper) ([]AuthConfig, error) {
 
 			authcfgs = append(authcfgs,
 				AuthConfig{
-					Enabled:           c.Enabled,
-					Audience:          c.Audience,
-					Issuer:            c.Issuer,
-					JWKSURI:           c.JWKSURI,
-					JWKSRemoteTimeout: c.JWKSRemoteTimeout,
-					RolesClaim:        c.Claims.Roles,
-					UsernameClaim:     c.Claims.Username,
+					Enabled:                c.Enabled,
+					Audience:               c.Audience,
+					Issuer:                 c.Issuer,
+					JWKSURI:                c.JWKSURI,
+					JWKSRemoteTimeout:      c.JWKSRemoteTimeout,
+					RoleValidationStrategy: c.RoleValidationStrategy,
+					RolesClaim:             c.Claims.Roles,
+					UsernameClaim:          c.Claims.Username,
 				},
 			)
 		}

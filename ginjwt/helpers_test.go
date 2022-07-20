@@ -20,25 +20,27 @@ func TestRegisterViperOIDCFlagsSingleProvider(t *testing.T) {
 		{
 			name: "Get AuthConfig from parameters scenario 1",
 			expectedAuthConfig: ginjwt.AuthConfig{
-				Enabled:           true,
-				Audience:          "tacos",
-				Issuer:            "are",
-				JWKSURI:           "https://bit.ly/3HlVmWp",
-				JWKSRemoteTimeout: 10 * time.Second,
-				RolesClaim:        "pretty",
-				UsernameClaim:     "awesome",
+				Enabled:                true,
+				Audience:               "tacos",
+				Issuer:                 "are",
+				JWKSURI:                "https://bit.ly/3HlVmWp",
+				JWKSRemoteTimeout:      10 * time.Second,
+				RolesClaim:             "pretty",
+				UsernameClaim:          "awesome",
+				RoleValidationStrategy: ginjwt.RoleValidationStrategyAny,
 			},
 		},
 		{
 			name: "Get AuthConfig from parameters scenario 2",
 			expectedAuthConfig: ginjwt.AuthConfig{
-				Enabled:           true,
-				Audience:          "beer",
-				Issuer:            "is",
-				JWKSURI:           "https://bit.ly/3HlVmWp",
-				JWKSRemoteTimeout: 11 * time.Second,
-				RolesClaim:        "quite",
-				UsernameClaim:     "tasty",
+				Enabled:                true,
+				Audience:               "beer",
+				Issuer:                 "is",
+				JWKSURI:                "https://bit.ly/3HlVmWp",
+				JWKSRemoteTimeout:      11 * time.Second,
+				RolesClaim:             "quite",
+				UsernameClaim:          "tasty",
+				RoleValidationStrategy: ginjwt.RoleValidationStrategyAll,
 			},
 		},
 		{
@@ -82,6 +84,7 @@ func TestRegisterViperOIDCFlagsSingleProvider(t *testing.T) {
 			v.Set("oidc.claims.roles", tc.expectedAuthConfig.RolesClaim)
 			v.Set("oidc.claims.username", tc.expectedAuthConfig.UsernameClaim)
 			v.Set("oidc.jwksremotetimeout", tc.expectedAuthConfig.JWKSRemoteTimeout)
+			v.Set("oidc.rolevalidationstrategy", tc.expectedAuthConfig.RoleValidationStrategy)
 
 			gotAT, err := ginjwt.GetAuthConfigFromFlags(v)
 			if tc.wantErr {
@@ -95,6 +98,7 @@ func TestRegisterViperOIDCFlagsSingleProvider(t *testing.T) {
 				assert.Equal(t, tc.expectedAuthConfig.JWKSRemoteTimeout, gotAT.JWKSRemoteTimeout)
 				assert.Equal(t, tc.expectedAuthConfig.RolesClaim, gotAT.RolesClaim)
 				assert.Equal(t, tc.expectedAuthConfig.UsernameClaim, gotAT.UsernameClaim)
+				assert.Equal(t, tc.expectedAuthConfig.RoleValidationStrategy, gotAT.RoleValidationStrategy)
 			}
 		})
 	}
@@ -111,11 +115,12 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 			name: "Get AuthConfig from parameters scenario 1",
 			config: []ginjwt.OIDCConfig{
 				{
-					Enabled:           true,
-					Audience:          "tacos",
-					Issuer:            "are",
-					JWKSURI:           "https://bit.ly/3HlVmWp",
-					JWKSRemoteTimeout: 10 * time.Second,
+					Enabled:                true,
+					Audience:               "tacos",
+					Issuer:                 "are",
+					JWKSURI:                "https://bit.ly/3HlVmWp",
+					JWKSRemoteTimeout:      10 * time.Second,
+					RoleValidationStrategy: ginjwt.RoleValidationStrategyAny,
 					Claims: ginjwt.Claims{
 						Roles:    "pretty",
 						Username: "awesome",
@@ -124,13 +129,14 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 			},
 			expectedAuthConfig: []ginjwt.AuthConfig{
 				{
-					Enabled:           true,
-					Audience:          "tacos",
-					Issuer:            "are",
-					JWKSURI:           "https://bit.ly/3HlVmWp",
-					JWKSRemoteTimeout: 10 * time.Second,
-					RolesClaim:        "pretty",
-					UsernameClaim:     "awesome",
+					Enabled:                true,
+					Audience:               "tacos",
+					Issuer:                 "are",
+					JWKSURI:                "https://bit.ly/3HlVmWp",
+					JWKSRemoteTimeout:      10 * time.Second,
+					RolesClaim:             "pretty",
+					UsernameClaim:          "awesome",
+					RoleValidationStrategy: ginjwt.RoleValidationStrategyAny,
 				},
 			},
 		},
@@ -138,11 +144,12 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 			name: "Get AuthConfig from parameters scenario 2",
 			config: []ginjwt.OIDCConfig{
 				{
-					Enabled:           true,
-					Audience:          "beer",
-					Issuer:            "is",
-					JWKSURI:           "https://bit.ly/3HlVmWp",
-					JWKSRemoteTimeout: 11 * time.Second,
+					Enabled:                true,
+					Audience:               "beer",
+					Issuer:                 "is",
+					JWKSURI:                "https://bit.ly/3HlVmWp",
+					JWKSRemoteTimeout:      11 * time.Second,
+					RoleValidationStrategy: ginjwt.RoleValidationStrategyAll,
 					Claims: ginjwt.Claims{
 						Roles:    "quite",
 						Username: "tasty",
@@ -151,13 +158,14 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 			},
 			expectedAuthConfig: []ginjwt.AuthConfig{
 				{
-					Enabled:           true,
-					Audience:          "beer",
-					Issuer:            "is",
-					JWKSURI:           "https://bit.ly/3HlVmWp",
-					JWKSRemoteTimeout: 11 * time.Second,
-					RolesClaim:        "quite",
-					UsernameClaim:     "tasty",
+					Enabled:                true,
+					Audience:               "beer",
+					Issuer:                 "is",
+					JWKSURI:                "https://bit.ly/3HlVmWp",
+					JWKSRemoteTimeout:      11 * time.Second,
+					RolesClaim:             "quite",
+					UsernameClaim:          "tasty",
+					RoleValidationStrategy: ginjwt.RoleValidationStrategyAll,
 				},
 			},
 		},
@@ -304,6 +312,7 @@ func TestRegisterViperOIDCFlags(t *testing.T) {
 				assert.Equal(t, tc.expectedAuthConfig[0].JWKSRemoteTimeout, gotAT.JWKSRemoteTimeout)
 				assert.Equal(t, tc.expectedAuthConfig[0].RolesClaim, gotAT.RolesClaim)
 				assert.Equal(t, tc.expectedAuthConfig[0].UsernameClaim, gotAT.UsernameClaim)
+				assert.Equal(t, tc.expectedAuthConfig[0].RoleValidationStrategy, gotAT.RoleValidationStrategy)
 			}
 		})
 	}

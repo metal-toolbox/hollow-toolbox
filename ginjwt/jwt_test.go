@@ -434,17 +434,18 @@ func TestInvalidJWKURIWithWrongPath(t *testing.T) {
 
 func TestVerifyTokenWithScopes(t *testing.T) {
 	var testCases = []struct {
-		testName         string
-		middlewareAud    string
-		middlewareIss    string
-		middlewareScopes []string
-		signingKey       *rsa.PrivateKey
-		signingKeyID     string
-		claims           jwt.Claims
-		claimScopes      []string
-		wantScopes       []string
-		want             ginauth.ClaimMetadata
-		wantErr          bool
+		testName            string
+		middlewareAud       string
+		middlewareIss       string
+		middlewareScopes    []string
+		middlewareRoleStrat ginjwt.RoleValidationStrategy
+		signingKey          *rsa.PrivateKey
+		signingKeyID        string
+		claims              jwt.Claims
+		claimScopes         []string
+		wantScopes          []string
+		want                ginauth.ClaimMetadata
+		wantErr             bool
 	}{
 		{
 			testName:         "missing all scopes",
@@ -465,12 +466,63 @@ func TestVerifyTokenWithScopes(t *testing.T) {
 			wantErr:     true,
 		},
 		{
-			testName:         "missing some scopes",
+			testName:         "missing some scopes - default",
 			middlewareAud:    "ginjwt.test",
 			middlewareIss:    "ginjwt.test.issuer",
 			middlewareScopes: []string{"adminscope"},
 			signingKey:       ginjwt.TestPrivRSAKey1,
 			signingKeyID:     ginjwt.TestPrivRSAKey1ID,
+			claims: jwt.Claims{
+				Subject:   "test-user",
+				Issuer:    "ginjwt.test.issuer",
+				NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
+				Audience:  jwt.Audience{"ginjwt.test", "another.test.service"},
+			},
+			claimScopes: []string{"testScope"},
+			wantScopes:  []string{"testScope", "anotherScope"},
+
+			want: ginauth.ClaimMetadata{
+				Subject: "test-user",
+				User:    "test-user",
+				Roles: []string{
+					"testScope",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			testName:            "missing some scopes - any required",
+			middlewareAud:       "ginjwt.test",
+			middlewareIss:       "ginjwt.test.issuer",
+			middlewareRoleStrat: ginjwt.RoleValidationStrategyAny,
+			middlewareScopes:    []string{"adminscope"},
+			signingKey:          ginjwt.TestPrivRSAKey1,
+			signingKeyID:        ginjwt.TestPrivRSAKey1ID,
+			claims: jwt.Claims{
+				Subject:   "test-user",
+				Issuer:    "ginjwt.test.issuer",
+				NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
+				Audience:  jwt.Audience{"ginjwt.test", "another.test.service"},
+			},
+			claimScopes: []string{"testScope"},
+			wantScopes:  []string{"testScope", "anotherScope"},
+			want: ginauth.ClaimMetadata{
+				Subject: "test-user",
+				User:    "test-user",
+				Roles: []string{
+					"testScope",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			testName:            "missing some scopes - all required",
+			middlewareAud:       "ginjwt.test",
+			middlewareIss:       "ginjwt.test.issuer",
+			middlewareRoleStrat: ginjwt.RoleValidationStrategyAll,
+			middlewareScopes:    []string{"adminscope"},
+			signingKey:          ginjwt.TestPrivRSAKey1,
+			signingKeyID:        ginjwt.TestPrivRSAKey1ID,
 			claims: jwt.Claims{
 				Subject:   "test-user",
 				Issuer:    "ginjwt.test.issuer",
@@ -538,10 +590,11 @@ func TestVerifyTokenWithScopes(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			jwksURI := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 			config := ginjwt.AuthConfig{
-				Enabled:  true,
-				Audience: tt.middlewareAud,
-				Issuer:   tt.middlewareIss,
-				JWKSURI:  jwksURI,
+				Enabled:                true,
+				Audience:               tt.middlewareAud,
+				Issuer:                 tt.middlewareIss,
+				JWKSURI:                jwksURI,
+				RoleValidationStrategy: tt.middlewareRoleStrat,
 			}
 			m, err := ginjwt.NewAuthMiddleware(config)
 			assert.NoError(t, err)
