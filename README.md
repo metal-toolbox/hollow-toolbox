@@ -1,3 +1,5 @@
+[![Go Reference](https://pkg.go.dev/badge/go.hollow.sh/toolbox.svg)](https://pkg.go.dev/go.hollow.sh/toolbox)
+
 # Hollow Toolbox
 
 This repository contains the following shared packages that are used throughout the Hollow eco-system.

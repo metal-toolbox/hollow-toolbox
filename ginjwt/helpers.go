@@ -28,22 +28,26 @@ type Claims struct {
 // RegisterViperOIDCFlags ensures that the given Viper and cobra.Command instances
 // have the following command line/configuration flags registered:
 //
-// * `oidc`: Enables/disables OIDC Authentication
+// - oidc: Enables/disables OIDC authentication.
+//
+// - oidc-aud: Specifies the expected audience for the JWT token.
+//
+// - oidc-issuer: Specifies the expected issuer for the JWT token (can be more than one value).
+//
+// - oidc-jwksuri: Specifies the JSON Web Key Set (JWKS) URI (can be more than one value).
+//
+// - oidc-roles-claim: Specifies the roles to be accepted for the JWT claim.
+//
+// - oidc-username-claim: Specifies a username to use for the JWT claim.
+//
+// - oidc-jwks-remotetimeout: Specifies a timeout for the JWKS URI.
 //
 // A call to this would normally look as follows:
 //
 //		ginjwt.RegisterViperOIDCFlags(viper.GetViper(), serveCmd)
 //
 // The oidc configuration should be passed in through a yaml file due to the nested
-// structure of the fields, however, if only one oidc provider is used the flag parameters would work
-//
-// * `oidc-aud`: Specifies the expected audience for the JWT token
-// * `oidc-issuer`: Specifies the expected issuer for the JWT token (can be more than one value)
-// * `oidc-jwksuri`: Specifies the JSON Web Key Set (JWKS) URI (can be more than one value).
-// * `oidc-roles-claim`: Specifies the roles to be accepted for the JWT claim.
-// * `oidc-username-claim`: Specifies a username to use for the JWT claim
-// * `oidc-jwks-remotetimeout`: Specifies a timeout for the JWKS URI
-//
+// structure of the fields, however, if only one oidc provider is used the flag parameters would work.
 func RegisterViperOIDCFlags(v *viper.Viper, cmd *cobra.Command) {
 	cmd.Flags().Bool("oidc", true, "use oidc auth")
 	ViperBindFlag("oidc.enabled", cmd.Flags().Lookup("oidc"))
