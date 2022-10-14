@@ -58,3 +58,8 @@ func (r *Root) ViperBindFlag(name, flag string) {
 		panic(err)
 	}
 }
+
+// Execute is a vanity wrapper on cobra.Command.Execute()
+func (r *Root) Execute() error {
+	return r.Cmd.Execute()
+}
