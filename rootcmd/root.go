@@ -58,3 +58,7 @@ func (r *Root) ViperBindFlag(name, flag string) {
 		panic(err)
 	}
 }
+
+func (r *Root) Run() error {
+	return r.Cmd.Execute()
+}
