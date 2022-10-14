@@ -44,7 +44,7 @@ type Claims struct {
 //
 // A call to this would normally look as follows:
 //
-//		ginjwt.RegisterViperOIDCFlags(viper.GetViper(), serveCmd)
+//	ginjwt.RegisterViperOIDCFlags(viper.GetViper(), serveCmd)
 //
 // The oidc configuration should be passed in through a yaml file due to the nested
 // structure of the fields, however, if only one oidc provider is used the flag parameters would work.
@@ -73,7 +73,7 @@ func RegisterViperOIDCFlags(v *viper.Viper, cmd *cobra.Command) {
 //
 // A call to this would normally look as follows:
 //
-//		ginjwt.GetAuthConfigFromFlags(viper.GetViper())
+//	ginjwt.GetAuthConfigFromFlags(viper.GetViper())
 //
 // Note that when using this function configuration
 func GetAuthConfigFromFlags(v *viper.Viper) (AuthConfig, error) {
@@ -118,7 +118,7 @@ func GetAuthConfigFromFlags(v *viper.Viper) (AuthConfig, error) {
 //
 // A call to this would normally look as follows:
 //
-//		ginjwt.GetAuthConfigsFromFlags(viper.GetViper())
+//	ginjwt.GetAuthConfigsFromFlags(viper.GetViper())
 //
 // Note that this function will retrieve as many AuthConfigs as the number
 // of issuers and JWK URIs given (which must match)

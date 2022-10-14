@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -87,7 +87,7 @@ func (rm *RemoteMiddleware) VerifyTokenWithScopes(c *gin.Context, scopes []strin
 
 	defer resp.Body.Close()
 
-	body, readerr := ioutil.ReadAll(resp.Body)
+	body, readerr := io.ReadAll(resp.Body)
 	if readerr != nil {
 		return ClaimMetadata{}, fmt.Errorf("%w: %s", ErrMiddlewareRemote, readerr)
 	}
