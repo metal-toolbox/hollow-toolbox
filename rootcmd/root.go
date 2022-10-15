@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"go.hollow.sh/toolbox/flags"
 )
 
 var alphaRegex *regexp.Regexp
@@ -46,17 +46,10 @@ func (r *Root) InitFlags() {
 	r.Cmd.PersistentFlags().StringVar(&r.Options.ConfigFile, "config", "", "config file (default is $HOME/."+r.Options.App+".yaml)")
 
 	r.Cmd.PersistentFlags().BoolVar(&r.Options.Debug, "debug", false, "enable debug logging")
-	r.ViperBindFlag("logging.debug", "debug")
+	flags.MustBindPFlag("logging.debug", r.Cmd.PersistentFlags().Lookup("debug"))
 
 	r.Cmd.PersistentFlags().BoolVar(&r.Options.PrettyPrint, "pretty", false, "enable pretty (human readable) logging output")
-	r.ViperBindFlag("logging.pretty", "pretty")
-}
-
-// ViperBindFlag provides a wrapper around the viper bindings that handles error checks
-func (r *Root) ViperBindFlag(name, flag string) {
-	if err := viper.BindPFlag(name, r.Cmd.PersistentFlags().Lookup(flag)); err != nil {
-		panic(err)
-	}
+	flags.MustBindPFlag("logging.pretty", r.Cmd.PersistentFlags().Lookup("pretty"))
 }
 
 // Execute is a vanity wrapper on cobra.Command.Execute()

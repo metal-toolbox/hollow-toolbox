@@ -6,8 +6,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-// ViperBindFlag provides a wrapper around the viper bindings that handles error checks
-func ViperBindFlag(name string, flag *pflag.Flag) {
+// MustBindPFlag binds a viper name to a spf13/pflag and panics on error
+func MustBindPFlag(name string, flag *pflag.Flag) {
 	err := viper.BindPFlag(name, flag)
 	if err != nil {
 		panic(err)
