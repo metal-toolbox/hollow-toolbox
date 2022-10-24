@@ -50,21 +50,21 @@ type Claims struct {
 // structure of the fields, however, if only one oidc provider is used the flag parameters would work.
 func RegisterViperOIDCFlags(v *viper.Viper, cmd *cobra.Command) {
 	cmd.Flags().Bool("oidc", true, "use oidc auth")
-	ViperBindFlag("oidc.enabled", cmd.Flags().Lookup("oidc"))
+	BindFlagFromViperInst(v, "oidc.enabled", cmd.Flags().Lookup("oidc"))
 	cmd.Flags().String("oidc-aud", "", "expected audience on OIDC JWT")
-	ViperBindFlag("oidc.audience", cmd.Flags().Lookup("oidc-aud"))
+	BindFlagFromViperInst(v, "oidc.audience", cmd.Flags().Lookup("oidc-aud"))
 	cmd.Flags().StringSlice("oidc-issuer", []string{}, "expected issuer of OIDC JWT")
-	ViperBindFlag("oidc.issuer", cmd.Flags().Lookup("oidc-issuer"))
+	BindFlagFromViperInst(v, "oidc.issuer", cmd.Flags().Lookup("oidc-issuer"))
 	cmd.Flags().StringSlice("oidc-jwksuri", []string{}, "URI for JWKS listing for JWTs")
-	ViperBindFlag("oidc.jwksuri", cmd.Flags().Lookup("oidc-jwksuri"))
+	BindFlagFromViperInst(v, "oidc.jwksuri", cmd.Flags().Lookup("oidc-jwksuri"))
 	cmd.Flags().String("oidc-roles-claim", "claim", "field containing the permissions of an OIDC JWT")
-	ViperBindFlag("oidc.claims.roles", cmd.Flags().Lookup("oidc-roles-claim"))
+	BindFlagFromViperInst(v, "oidc.claims.roles", cmd.Flags().Lookup("oidc-roles-claim"))
 	cmd.Flags().String("oidc-username-claim", "", "additional fields to output in logs from the JWT token, ex (email)")
-	ViperBindFlag("oidc.claims.username", cmd.Flags().Lookup("oidc-username-claim"))
+	BindFlagFromViperInst(v, "oidc.claims.username", cmd.Flags().Lookup("oidc-username-claim"))
 	cmd.Flags().Duration("oidc-jwks-remote-timeout", 1*time.Minute, "timeout for remote JWKS fetching")
-	ViperBindFlag("oidc.jwksremotetimeout", cmd.Flags().Lookup("oidc-jwks-remote-timeout"))
+	BindFlagFromViperInst(v, "oidc.jwksremotetimeout", cmd.Flags().Lookup("oidc-jwks-remote-timeout"))
 	cmd.Flags().String("oidc-role-validation-strategy", string(RoleValidationStrategyAny), "validation strategy for roles (any or all)")
-	ViperBindFlag("oidc.rolevalidationstrategy", cmd.Flags().Lookup("oidc-role-validation-strategy"))
+	BindFlagFromViperInst(v, "oidc.rolevalidationstrategy", cmd.Flags().Lookup("oidc-role-validation-strategy"))
 }
 
 // GetAuthConfigFromFlags builds an AuthConfig object from flags provided by
@@ -164,7 +164,12 @@ func GetAuthConfigsFromFlags(v *viper.Viper) ([]AuthConfig, error) {
 
 // ViperBindFlag provides a wrapper around the viper bindings that handles error checks
 func ViperBindFlag(name string, flag *pflag.Flag) {
-	err := viper.BindPFlag(name, flag)
+	BindFlagFromViperInst(viper.GetViper(), name, flag)
+}
+
+// BindFlagFromViperInst provides a wrapper around the viper bindings that handles error checks
+func BindFlagFromViperInst(v *viper.Viper, name string, flag *pflag.Flag) {
+	err := v.BindPFlag(name, flag)
 	if err != nil {
 		panic(err)
 	}
