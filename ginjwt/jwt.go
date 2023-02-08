@@ -40,10 +40,13 @@ type Middleware struct {
 
 // AuthConfig provides the configuration for the authentication service
 type AuthConfig struct {
-	Enabled           bool
-	Audience          string
-	Issuer            string
-	JWKSURI           string
+	Enabled  bool
+	Audience string
+	Issuer   string
+	JWKSURI  string
+
+	// JWKS allows the user to specify the JWKS directly instead of through URI
+	JWKS              jose.JSONWebKeySet
 	LogFields         []string
 	RolesClaim        string
 	UsernameClaim     string
@@ -70,8 +73,18 @@ func NewAuthMiddleware(cfg AuthConfig) (*Middleware, error) {
 		return mw, nil
 	}
 
-	if err := mw.refreshJWKS(); err != nil {
-		return nil, err
+	if cfg.JWKSURI != "" && len(cfg.JWKS.Keys) > 0 {
+		return nil, ErrJWKSConfigConflict
+	}
+
+	// Only refresh JWKSURI if static one isn't provided
+	if len(cfg.JWKS.Keys) > 0 {
+		mw.cachedJWKS = cfg.JWKS
+	} else {
+		// Fetch JWKS from URI
+		if err := mw.refreshJWKS(); err != nil {
+			return nil, err
+		}
 	}
 
 	return mw, nil

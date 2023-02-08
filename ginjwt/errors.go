@@ -22,4 +22,7 @@ var (
 
 	// ErrMissingJWKURIFlag is an error returned when the JWK URI isn't provided via a command line flag.
 	ErrMissingJWKURIFlag = errors.New("JWK URI wasn't provided")
+
+	// ErrJWKSConfigConflict is an error when both JWKSURI and JWKS are set
+	ErrJWKSConfigConflict = errors.New("JWKS and JWKSURI can't both be set at the same time")
 )

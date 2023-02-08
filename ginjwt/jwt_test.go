@@ -174,7 +174,7 @@ func TestMiddlewareValidatesTokensWithScopes(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.testName, func(t *testing.T) {
-			jwksURI := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+			jwksURI := ginjwt.TestHelperJWKSURIProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 
 			cfg := ginjwt.AuthConfig{Enabled: true, Audience: tt.middlewareAud, Issuer: tt.middlewareIss, JWKSURI: jwksURI}
 			authMW, err := ginjwt.NewAuthMiddleware(cfg)
@@ -338,7 +338,7 @@ func TestMiddlewareAuthRequired(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.testName, func(t *testing.T) {
-			jwksURI := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+			jwksURI := ginjwt.TestHelperJWKSURIProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 
 			cfg := ginjwt.AuthConfig{Enabled: true, Audience: tt.middlewareAud, Issuer: tt.middlewareIss, JWKSURI: jwksURI}
 			authMW, err := ginjwt.NewAuthMiddleware(cfg)
@@ -400,7 +400,7 @@ func TestInvalidAuthHeader(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.testName, func(t *testing.T) {
-			jwksURI := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+			jwksURI := ginjwt.TestHelperJWKSURIProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 			cfg := ginjwt.AuthConfig{Enabled: true, Audience: "aud", Issuer: "iss", JWKSURI: jwksURI}
 			authMW, err := ginjwt.NewAuthMiddleware(cfg)
 			require.NoError(t, err)
@@ -424,7 +424,7 @@ func TestInvalidAuthHeader(t *testing.T) {
 }
 
 func TestInvalidJWKURIWithWrongPath(t *testing.T) {
-	uri := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+	uri := ginjwt.TestHelperJWKSURIProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 	uri += "/some-extra-path"
 	cfg := ginjwt.AuthConfig{Enabled: true, Audience: "aud", Issuer: "iss", JWKSURI: uri}
 	_, err := ginjwt.NewAuthMiddleware(cfg)
@@ -588,7 +588,7 @@ func TestVerifyTokenWithScopes(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.testName, func(t *testing.T) {
-			jwksURI := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+			jwksURI := ginjwt.TestHelperJWKSURIProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 			config := ginjwt.AuthConfig{
 				Enabled:                true,
 				Audience:               tt.middlewareAud,
@@ -617,6 +617,67 @@ func TestVerifyTokenWithScopes(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestAuthMiddlewareConfig(t *testing.T) {
+	jwks := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+	jwksURI := ginjwt.TestHelperJWKSURIProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+
+	testCases := []struct {
+		name    string
+		input   ginjwt.AuthConfig
+		checkFn func(*testing.T, ginauth.GenericAuthMiddleware, error)
+	}{
+		{
+			name: "ValidWithJWKS",
+			input: ginjwt.AuthConfig{
+				Enabled:                true,
+				Audience:               "example-aud",
+				Issuer:                 "example-iss",
+				JWKS:                   jwks,
+				RoleValidationStrategy: "all",
+			},
+			checkFn: func(t *testing.T, mw ginauth.GenericAuthMiddleware, err error) {
+				assert.NoError(t, err)
+				assert.NotNil(t, mw)
+			},
+		},
+		{
+			name: "ValidWithJWKSURI",
+			input: ginjwt.AuthConfig{
+				Enabled:                true,
+				Audience:               "example-aud",
+				Issuer:                 "example-iss",
+				JWKSURI:                jwksURI,
+				RoleValidationStrategy: "all",
+			},
+			checkFn: func(t *testing.T, mw ginauth.GenericAuthMiddleware, err error) {
+				assert.NoError(t, err)
+				assert.NotNil(t, mw)
+			},
+		},
+		{
+			name: "InvalidJWKSConfig",
+			input: ginjwt.AuthConfig{
+				Enabled:                true,
+				Audience:               "example-aud",
+				Issuer:                 "example-iss",
+				JWKSURI:                jwksURI,
+				JWKS:                   jwks,
+				RoleValidationStrategy: "all",
+			},
+			checkFn: func(t *testing.T, mw ginauth.GenericAuthMiddleware, err error) {
+				assert.ErrorIs(t, err, ginjwt.ErrJWKSConfigConflict)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(tt *testing.T) {
+			mw, err := ginjwt.NewAuthMiddleware(tc.input)
+			tc.checkFn(tt, mw, err)
 		})
 	}
 }
