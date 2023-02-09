@@ -281,6 +281,11 @@ func (m *Middleware) refreshJWKS() error {
 func (m *Middleware) getJWKS(kid string) *jose.JSONWebKey {
 	keys := m.cachedJWKS.Key(kid)
 	if len(keys) == 0 {
+		// don't fetch JWKS from URI if we don't have one
+		if m.config.JWKSURI == "" {
+			return nil
+		}
+
 		// couldn't find the signing key in our cache, refresh cache and search again
 		if err := m.refreshJWKS(); err != nil {
 			return nil
