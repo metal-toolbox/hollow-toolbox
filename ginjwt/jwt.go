@@ -249,6 +249,11 @@ func (m *Middleware) VerifyScopes(c *gin.Context, scopes []string) error {
 func (m *Middleware) refreshJWKS() error {
 	var ctx context.Context
 
+	// When using JWKS directly, refresh should be a no-op
+	if len(m.config.JWKS.Keys) > 0 {
+		return nil
+	}
+
 	if m.config.JWKSRemoteTimeout != 0 {
 		var cancel context.CancelFunc
 
@@ -281,11 +286,6 @@ func (m *Middleware) refreshJWKS() error {
 func (m *Middleware) getJWKS(kid string) *jose.JSONWebKey {
 	keys := m.cachedJWKS.Key(kid)
 	if len(keys) == 0 {
-		// don't fetch JWKS from URI if we don't have one
-		if m.config.JWKSURI == "" {
-			return nil
-		}
-
 		// couldn't find the signing key in our cache, refresh cache and search again
 		if err := m.refreshJWKS(); err != nil {
 			return nil
