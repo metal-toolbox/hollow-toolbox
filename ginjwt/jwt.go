@@ -73,8 +73,12 @@ func NewAuthMiddleware(cfg AuthConfig) (*Middleware, error) {
 		return mw, nil
 	}
 
-	if cfg.JWKSURI != "" && len(cfg.JWKS.Keys) > 0 {
-		return nil, ErrJWKSConfigConflict
+	uriProvided := (cfg.JWKSURI != "")
+	jwksProvided := len(cfg.JWKS.Keys) > 0
+
+	// Either they were both provided, or neither was provided
+	if uriProvided == jwksProvided {
+		return nil, fmt.Errorf("%w: either JWKSURI or JWKS must be provided", ErrInvalidAuthConfig)
 	}
 
 	// Only refresh JWKSURI if static one isn't provided
