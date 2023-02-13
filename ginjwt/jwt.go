@@ -40,10 +40,13 @@ type Middleware struct {
 
 // AuthConfig provides the configuration for the authentication service
 type AuthConfig struct {
-	Enabled           bool
-	Audience          string
-	Issuer            string
-	JWKSURI           string
+	Enabled  bool
+	Audience string
+	Issuer   string
+	JWKSURI  string
+
+	// JWKS allows the user to specify the JWKS directly instead of through URI
+	JWKS              jose.JSONWebKeySet
 	LogFields         []string
 	RolesClaim        string
 	UsernameClaim     string
@@ -70,8 +73,22 @@ func NewAuthMiddleware(cfg AuthConfig) (*Middleware, error) {
 		return mw, nil
 	}
 
-	if err := mw.refreshJWKS(); err != nil {
-		return nil, err
+	uriProvided := (cfg.JWKSURI != "")
+	jwksProvided := len(cfg.JWKS.Keys) > 0
+
+	// Either they were both provided, or neither was provided
+	if uriProvided == jwksProvided {
+		return nil, fmt.Errorf("%w: either JWKSURI or JWKS must be provided", ErrInvalidAuthConfig)
+	}
+
+	// Only refresh JWKSURI if static one isn't provided
+	if len(cfg.JWKS.Keys) > 0 {
+		mw.cachedJWKS = cfg.JWKS
+	} else {
+		// Fetch JWKS from URI
+		if err := mw.refreshJWKS(); err != nil {
+			return nil, err
+		}
 	}
 
 	return mw, nil
@@ -235,6 +252,11 @@ func (m *Middleware) VerifyScopes(c *gin.Context, scopes []string) error {
 
 func (m *Middleware) refreshJWKS() error {
 	var ctx context.Context
+
+	// When using JWKS directly, refresh should be a no-op
+	if len(m.config.JWKS.Keys) > 0 {
+		return nil
+	}
 
 	if m.config.JWKSRemoteTimeout != 0 {
 		var cancel context.CancelFunc

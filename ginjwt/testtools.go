@@ -55,11 +55,8 @@ func TestHelperMustMakeSigner(alg jose.SignatureAlgorithm, kid string, k interfa
 	return sig
 }
 
-// TestHelperJWKSProvider returns a url for a webserver that will return JSONWebKeySets
-func TestHelperJWKSProvider(keyIDs ...string) string {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
+// TestHelperJWKSProvider returns a JWKS
+func TestHelperJWKSProvider(keyIDs ...string) jose.JSONWebKeySet {
 	jwks := make([]jose.JSONWebKey, len(keyIDs))
 
 	for idx, keyID := range keyIDs {
@@ -76,10 +73,20 @@ func TestHelperJWKSProvider(keyIDs ...string) string {
 		}
 	}
 
+	return jose.JSONWebKeySet{
+		Keys: jwks,
+	}
+}
+
+// TestHelperJWKSURIProvider returns a url for a webserver that will return JSONWebKeySets
+func TestHelperJWKSURIProvider(keyIDs ...string) string {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+
+	keySet := TestHelperJWKSProvider(keyIDs...)
+
 	r.GET("/.well-known/jwks.json", func(c *gin.Context) {
-		c.JSON(http.StatusOK, jose.JSONWebKeySet{
-			Keys: jwks,
-		})
+		c.JSON(http.StatusOK, keySet)
 	})
 
 	listener, err := net.Listen("tcp", ":0")
