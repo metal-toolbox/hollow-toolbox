@@ -180,7 +180,7 @@ func TestMiddlewareValidatesTokensWithScopes(t *testing.T) {
 			"ok",
 		},
 		{
-			"valid with directly loaded JWKS",
+			"invalid key with directly loaded JWKS",
 			"ginjwt.test",
 			"ginjwt.test.issuer",
 			[]string{"testScope"},
