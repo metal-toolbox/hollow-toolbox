@@ -190,8 +190,8 @@ func TestMultitokenMiddlewareValidatesTokens(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.testName, func(t *testing.T) {
-			jwksURI1 := ginjwt.TestHelperJWKSURIProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
-			jwksURI2 := ginjwt.TestHelperJWKSURIProvider(ginjwt.TestPrivRSAKey3ID, ginjwt.TestPrivRSAKey4ID)
+			jwksURI1 := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+			jwksURI2 := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey3ID, ginjwt.TestPrivRSAKey4ID)
 
 			cfg1 := ginjwt.AuthConfig{Enabled: true, Audience: tt.middlewareAud, Issuer: tt.middlewareIss, JWKSURI: jwksURI1}
 			cfg2 := ginjwt.AuthConfig{Enabled: true, Audience: tt.middlewareAud, Issuer: tt.middlewareIss, JWKSURI: jwksURI2}
@@ -258,7 +258,7 @@ func TestMultitokenInvalidAuthHeader(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.testName, func(t *testing.T) {
-			jwksURI := ginjwt.TestHelperJWKSURIProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+			jwksURI := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 			cfg := ginjwt.AuthConfig{Enabled: true, Audience: "aud", Issuer: "iss", JWKSURI: jwksURI}
 			authMW, err := ginjwt.NewMultiTokenMiddlewareFromConfigs(cfg)
 			require.NoError(t, err)

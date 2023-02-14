@@ -222,9 +222,9 @@ func TestMiddlewareValidatesTokensWithScopes(t *testing.T) {
 			var jwksURI string
 			var jwks jose.JSONWebKeySet
 			if tt.jwksFromURI {
-				jwksURI = ginjwt.TestHelperJWKSURIProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+				jwksURI = ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 			} else {
-				jwks = ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+				jwks = ginjwt.TestHelperJoseJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 			}
 
 			cfg := ginjwt.AuthConfig{Enabled: true, Audience: tt.middlewareAud, Issuer: tt.middlewareIss, JWKSURI: jwksURI, JWKS: jwks}
@@ -389,7 +389,7 @@ func TestMiddlewareAuthRequired(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.testName, func(t *testing.T) {
-			jwksURI := ginjwt.TestHelperJWKSURIProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+			jwksURI := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 
 			cfg := ginjwt.AuthConfig{Enabled: true, Audience: tt.middlewareAud, Issuer: tt.middlewareIss, JWKSURI: jwksURI}
 			authMW, err := ginjwt.NewAuthMiddleware(cfg)
@@ -451,7 +451,7 @@ func TestInvalidAuthHeader(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.testName, func(t *testing.T) {
-			jwksURI := ginjwt.TestHelperJWKSURIProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+			jwksURI := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 			cfg := ginjwt.AuthConfig{Enabled: true, Audience: "aud", Issuer: "iss", JWKSURI: jwksURI}
 			authMW, err := ginjwt.NewAuthMiddleware(cfg)
 			require.NoError(t, err)
@@ -475,7 +475,7 @@ func TestInvalidAuthHeader(t *testing.T) {
 }
 
 func TestInvalidJWKURIWithWrongPath(t *testing.T) {
-	uri := ginjwt.TestHelperJWKSURIProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+	uri := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 	uri += "/some-extra-path"
 	cfg := ginjwt.AuthConfig{Enabled: true, Audience: "aud", Issuer: "iss", JWKSURI: uri}
 	_, err := ginjwt.NewAuthMiddleware(cfg)
@@ -639,7 +639,7 @@ func TestVerifyTokenWithScopes(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.testName, func(t *testing.T) {
-			jwksURI := ginjwt.TestHelperJWKSURIProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+			jwksURI := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 			config := ginjwt.AuthConfig{
 				Enabled:                true,
 				Audience:               tt.middlewareAud,
@@ -673,8 +673,8 @@ func TestVerifyTokenWithScopes(t *testing.T) {
 }
 
 func TestAuthMiddlewareConfig(t *testing.T) {
-	jwks := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
-	jwksURI := ginjwt.TestHelperJWKSURIProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+	jwks := ginjwt.TestHelperJoseJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
+	jwksURI := ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 
 	testCases := []struct {
 		name    string
