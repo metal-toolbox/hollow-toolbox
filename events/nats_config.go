@@ -122,6 +122,26 @@ type NatsStreamOptions struct {
 }
 
 func (o *NatsOptions) validate() error {
+	if err := o.validatePrereqs(); err != nil {
+		return err
+	}
+
+	if o.Stream != nil {
+		if err := o.Stream.validate(); err != nil {
+			return err
+		}
+	}
+
+	if o.Consumer != nil {
+		if err := o.Consumer.validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (o *NatsOptions) validatePrereqs() error {
 	if o.AppName == "" {
 		return errors.Wrap(ErrNatsConfig, "AppName not defined, required to setup durable consumers")
 	}
@@ -142,48 +162,36 @@ func (o *NatsOptions) validate() error {
 		o.ConnectTimeout = connectTimeout
 	}
 
-	if o.Stream != nil {
-		if err := o.validateStreamParameters(); err != nil {
-			return err
-		}
-	}
-
-	if o.Consumer != nil {
-		if err := o.validateConsumerParameters(); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
-func (o *NatsOptions) validateStreamParameters() error {
-	if o.Stream.Retention == "" {
-		o.Stream.Retention = "limits"
+func (s *NatsStreamOptions) validate() error {
+	if s.Retention == "" {
+		s.Retention = "limits"
 	}
 
-	if !slices.Contains([]string{"workQueue", "limits", "interest"}, o.Stream.Retention) {
+	if !slices.Contains([]string{"workQueue", "limits", "interest"}, s.Retention) {
 		return errors.Wrap(ErrNatsConfig, "Stream parameters require a valid Retention")
 	}
 
-	if o.Stream.Name == "" {
+	if s.Name == "" {
 		return errors.Wrap(ErrNatsConfig, "stream parameters require a Name")
 	}
 
-	if len(o.Stream.Subjects) == 0 {
-		return errors.Wrap(ErrNatsConn, "stream parameters require one or more Subjects to associate with the stream")
+	if len(s.Subjects) == 0 {
+		return errors.Wrap(ErrNatsConfig, "stream parameters require one or more Subjects to associate with the stream")
 	}
 
 	return nil
 }
 
-func (o *NatsOptions) validateConsumerParameters() error {
-	if o.Consumer.AckWait == 0 {
-		o.Consumer.AckWait = consumerAckWait
+func (c *NatsConsumerOptions) validate() error {
+	if c.AckWait == 0 {
+		c.AckWait = consumerAckWait
 	}
 
-	if o.Consumer.MaxAckPending == 0 {
-		o.Consumer.MaxAckPending = consumerMaxAckPending
+	if c.MaxAckPending == 0 {
+		c.MaxAckPending = consumerMaxAckPending
 	}
 
 	return nil
