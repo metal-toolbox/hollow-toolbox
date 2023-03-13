@@ -198,6 +198,10 @@ func (n *NatsJetstream) addConsumer() error {
 
 // PublishAsyncWithContext publishes an event onto the NATS Jetstream.
 func (n *NatsJetstream) PublishAsyncWithContext(ctx context.Context, resType ResourceType, eventType EventType, objID string, obj interface{}) error {
+	if n.jsctx == nil {
+		return errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
+	}
+
 	msg := newEventStreamMessage(n.parameters.AppName, n.parameters.StreamURNNamespace, eventType, resType, objID)
 	msg.AdditionalData = map[string]interface{}{"data": obj}
 	msg.EventType = string(eventType)
@@ -222,6 +226,10 @@ func (n *NatsJetstream) PublishAsyncWithContext(ctx context.Context, resType Res
 
 // Subscribe to all configured SubscribeSubjects
 func (n *NatsJetstream) Subscribe(ctx context.Context) (MsgCh, error) {
+	if n.jsctx == nil {
+		return nil, errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
+	}
+
 	// Subscribe as a pull based subscriber
 	if n.parameters.Consumer != nil && n.parameters.Consumer.Pull {
 		if err := n.subscribeAsPull(ctx); err != nil {
@@ -244,6 +252,10 @@ func (n *NatsJetstream) Subscribe(ctx context.Context) (MsgCh, error) {
 
 // subscribeAsPull sets up the pull subscription
 func (n *NatsJetstream) subscribeAsPull(ctx context.Context) error {
+	if n.jsctx == nil {
+		return errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
+	}
+
 	for _, subject := range n.parameters.Consumer.SubscribeSubjects {
 		subscription, err := n.jsctx.PullSubscribe(subject, n.parameters.AppName, nats.BindStream(n.parameters.Stream.Name))
 		if err != nil {
@@ -258,6 +270,10 @@ func (n *NatsJetstream) subscribeAsPull(ctx context.Context) error {
 
 // PullMsg pulls upto batch count of messages from the stream through the pull based subscription.
 func (n *NatsJetstream) PullMsg(ctx context.Context, batch int) ([]Message, error) {
+	if n.jsctx == nil {
+		return nil, errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
+	}
+
 	msgs := []Message{}
 
 	var hasPullSubscription bool
