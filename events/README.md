@@ -43,8 +43,8 @@ The stream, consumer and subscription(s) are initialized when defined, based on 
 		}
 	}
 
-	// initialize broker - validates the configuration and returns a StreamBorker
-	stream, err := events.NewStreamBroker(natsOptions(appName, streamURL))
+	// initialize broker - validates the configuration and returns a Stream
+	stream, err := events.NewStream(natsOptions(appName, streamURL))
 	if err != nil {
 		panic(err)
 	}
@@ -55,7 +55,7 @@ The stream, consumer and subscription(s) are initialized when defined, based on 
 	}
 
 
-   // publish asynchronously to subscribed consumer.
+    // publish asynchronously to subscribed consumer.
 	if err := stream.PublishAsyncWithContext(ctx, resourceTypeServer, eventTypeCreate, uuid.New(), &Server{}); err != nil {
 		panic(err)
 	}
@@ -85,7 +85,6 @@ The stream, consumer and subscription(s) are initialized when defined, based on 
 			panic(err)
 		}
 	}
-
 ```
 
 ## Implementations

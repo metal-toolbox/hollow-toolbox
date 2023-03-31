@@ -38,8 +38,8 @@ const (
 	Delete EventType = "delete"
 )
 
-// StreamBroker provides methods to interact with the event stream.
-type StreamBroker interface {
+// Stream provides methods to interact with the event stream.
+type Stream interface {
 	// Open sets up the stream connection.
 	Open() error
 
@@ -61,7 +61,7 @@ type MsgCh chan Message
 
 // Message interface defines the methods available on the messages received on the stream.
 //
-// These methods are to be implemented by the stream broker for its§ messages.
+// These methods are to be implemented by the stream broker for its messages.
 type Message interface {
 	// Ack the message as processed on the stream.
 	Ack() error
@@ -86,8 +86,8 @@ type Message interface {
 	ActorURN(*pubsubx.Message) (*urnx.URN, error)
 }
 
-// NewStreamBroker returns a StreamBorker implementation.
-func NewStreamBroker(parameters StreamParameters) (StreamBroker, error) {
+// NewStream returns a Stream implementation.
+func NewStream(parameters StreamParameters) (Stream, error) {
 	return NewNatsBroker(parameters)
 }
 

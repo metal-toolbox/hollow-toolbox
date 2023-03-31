@@ -37,7 +37,7 @@ var (
 	ErrSubscription = errors.New("error subscribing to stream")
 )
 
-// NatsJetstream wraps the NATs JetStream connector to implement the StreamBroker interface.
+// NatsJetstream wraps the NATs JetStream connector to implement the Stream interface.
 type NatsJetstream struct {
 	jsctx         nats.JetStreamContext
 	conn          *nats.Conn
@@ -329,7 +329,7 @@ func (n *NatsJetstream) Close() error {
 	return errs
 }
 
-// NatsMsg implements the StreamBorker Message interface
+// NatsMsg implements the Stream Message interface
 type NatsMsg struct {
 	natsMsg *nats.Msg
 	Payload json.RawMessage
