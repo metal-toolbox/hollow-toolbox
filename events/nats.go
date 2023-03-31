@@ -172,14 +172,14 @@ func (n *NatsJetstream) addConsumer() error {
 
 	// lookup consumers in stream before attempting to add consumer
 	for name := range n.jsctx.ConsumerNames(n.parameters.Stream.Name) {
-		if name == n.parameters.AppName {
+		if name == n.parameters.Consumer.Name {
 			return nil
 		}
 	}
 
 	// https://pkg.go.dev/github.com/nats-io/nats.go#ConsumerConfig
 	cfg := &nats.ConsumerConfig{
-		Durable:       n.parameters.AppName,
+		Durable:       n.parameters.Consumer.Name,
 		MaxDeliver:    -1,
 		AckPolicy:     nats.AckExplicitPolicy,
 		AckWait:       n.parameters.Consumer.AckWait,
