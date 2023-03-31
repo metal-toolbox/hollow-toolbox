@@ -144,15 +144,34 @@ func TestNatsStreamOptions_Validate(t *testing.T) {
 }
 
 func TestNatsConsumerOptions_Validate(t *testing.T) {
+	type fields struct {
+		Pull              bool
+		Name              string
+		QueueGroup        string
+		AckWait           time.Duration
+		MaxAckPending     int
+		FilterSubject     string
+		SubscribeSubjects []string
+	}
+
 	tests := []struct {
 		name          string
 		errorContains string
+		fields        *fields
 		want          *NatsConsumerOptions
 	}{
 		{
-			"defaults set",
+			"Consumer Name required",
+			"require a Name",
+			&fields{},
+			nil,
+		},
+		{
+			"Defaults set",
 			"",
+			&fields{Name: "foo"},
 			&NatsConsumerOptions{
+				Name:          "foo",
 				AckWait:       consumerAckWait,
 				MaxAckPending: consumerMaxAckPending,
 			},
@@ -160,7 +179,7 @@ func TestNatsConsumerOptions_Validate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &NatsConsumerOptions{}
+			c := &NatsConsumerOptions{Name: tt.fields.Name}
 			err := c.validate()
 			if tt.errorContains != "" {
 				assert.True(t, errors.Is(err, ErrNatsConfig))

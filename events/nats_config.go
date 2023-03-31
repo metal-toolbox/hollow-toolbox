@@ -186,6 +186,10 @@ func (s *NatsStreamOptions) validate() error {
 }
 
 func (c *NatsConsumerOptions) validate() error {
+	if c.Name == "" {
+		return errors.Wrap(ErrNatsConfig, "consumer parameters require a Name")
+	}
+
 	if c.AckWait == 0 {
 		c.AckWait = consumerAckWait
 	}
