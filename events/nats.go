@@ -197,7 +197,7 @@ func (n *NatsJetstream) addConsumer() error {
 }
 
 // PublishAsyncWithContext publishes an event onto the NATS Jetstream.
-func (n *NatsJetstream) PublishAsyncWithContext(ctx context.Context, resType ResourceType, eventType EventType, objID string, obj interface{}) error {
+func (n *NatsJetstream) PublishAsyncWithContext(_ context.Context, resType ResourceType, eventType EventType, objID string, obj interface{}) error {
 	if n.jsctx == nil {
 		return errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
 	}
@@ -251,7 +251,7 @@ func (n *NatsJetstream) Subscribe(ctx context.Context) (MsgCh, error) {
 }
 
 // subscribeAsPull sets up the pull subscription
-func (n *NatsJetstream) subscribeAsPull(ctx context.Context) error {
+func (n *NatsJetstream) subscribeAsPull(_ context.Context) error {
 	if n.jsctx == nil {
 		return errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
 	}
@@ -269,7 +269,7 @@ func (n *NatsJetstream) subscribeAsPull(ctx context.Context) error {
 }
 
 // PullMsg pulls upto batch count of messages from the stream through the pull based subscription.
-func (n *NatsJetstream) PullMsg(ctx context.Context, batch int) ([]Message, error) {
+func (n *NatsJetstream) PullMsg(_ context.Context, batch int) ([]Message, error) {
 	if n.jsctx == nil {
 		return nil, errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
 	}

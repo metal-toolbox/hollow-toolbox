@@ -27,7 +27,7 @@ var (
 )
 
 // XXX: it's an error to call this without initializing the kv system
-func InitializeActiveWorkerRegistry(js nats.JetStreamContext) error {
+func InitializeActiveWorkerRegistry() error {
 	return InitializeRegistryWithOptions(kv.WithReplicas(replicaCount),
 		kv.WithDescription(kvDescription),
 		kv.WithTTL(registryTTL),

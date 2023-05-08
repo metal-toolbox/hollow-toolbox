@@ -1,3 +1,4 @@
+//nolint:all // linting test code is a waste of time
 package registry
 
 import (

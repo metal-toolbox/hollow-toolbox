@@ -4,6 +4,8 @@
 // unit testing with or without fault injection. The current answer is "look
 // at our tests for examples." While this is strictly speaking unsatisfying
 // this is what we have.
+
+//nolint:all
 package test
 
 import (
