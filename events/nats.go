@@ -1,3 +1,4 @@
+//nolint:wsl
 package events
 
 import (
@@ -46,6 +47,19 @@ type NatsJetstream struct {
 	subscriberCh  MsgCh
 }
 
+// Add some conversions for functions/APIs that expect NATS primitive types. This allows consumers of
+// NatsJetsream to convert easily to the types they need, without exporting the members or coercing
+// and direct clients/holders of NatsJetstream to do this conversion.
+// AsNatsConnection exposes the otherwise private NATS connection pointer
+func AsNatsConnection(n *NatsJetstream) *nats.Conn {
+	return n.conn
+}
+
+// AsNatsJetstreamContext exposes the otherwise private NATS JetStreamContext
+func AsNatsJetStreamContext(n *NatsJetstream) nats.JetStreamContext {
+	return n.jsctx
+}
+
 // NewNatsBroker validates the given stream broker parameters and returns a stream broker implementation.
 func NewNatsBroker(params StreamParameters) (*NatsJetstream, error) {
 	parameters, valid := params.(NatsOptions)
@@ -63,8 +77,23 @@ func NewNatsBroker(params StreamParameters) (*NatsJetstream, error) {
 	return &NatsJetstream{parameters: &parameters}, nil
 }
 
+// NewJetstreamFromConn takes an already established NATS connection pointer and returns a NatsJetstream pointer
+func NewJetstreamFromConn(c *nats.Conn) *NatsJetstream {
+	// JetStream() only returns an error if you call it with incompatible options. It is *not*
+	// a guarantee that c has JetStream enabled.
+	js, _ := c.JetStream()
+	return &NatsJetstream{
+		conn:  c,
+		jsctx: js,
+	}
+}
+
 // Open connects to the NATS Jetstream.
 func (n *NatsJetstream) Open() error {
+	if n.conn != nil {
+		return errors.Wrap(ErrNatsConn, "NATS connection is already established")
+	}
+
 	if n.parameters == nil {
 		return errors.Wrap(ErrNatsConfig, "NATS config parameters not defined")
 	}
@@ -197,7 +226,7 @@ func (n *NatsJetstream) addConsumer() error {
 }
 
 // PublishAsyncWithContext publishes an event onto the NATS Jetstream.
-func (n *NatsJetstream) PublishAsyncWithContext(ctx context.Context, resType ResourceType, eventType EventType, objID string, obj interface{}) error {
+func (n *NatsJetstream) PublishAsyncWithContext(_ context.Context, resType ResourceType, eventType EventType, objID string, obj interface{}) error {
 	if n.jsctx == nil {
 		return errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
 	}
@@ -251,7 +280,7 @@ func (n *NatsJetstream) Subscribe(ctx context.Context) (MsgCh, error) {
 }
 
 // subscribeAsPull sets up the pull subscription
-func (n *NatsJetstream) subscribeAsPull(ctx context.Context) error {
+func (n *NatsJetstream) subscribeAsPull(_ context.Context) error {
 	if n.jsctx == nil {
 		return errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
 	}
@@ -269,7 +298,7 @@ func (n *NatsJetstream) subscribeAsPull(ctx context.Context) error {
 }
 
 // PullMsg pulls upto batch count of messages from the stream through the pull based subscription.
-func (n *NatsJetstream) PullMsg(ctx context.Context, batch int) ([]Message, error) {
+func (n *NatsJetstream) PullMsg(_ context.Context, batch int) ([]Message, error) {
 	if n.jsctx == nil {
 		return nil, errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
 	}
