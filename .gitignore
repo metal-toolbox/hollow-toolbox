@@ -1,1 +1,4 @@
 coverage.txt
+# vim swap files
+**/.*.swp
+**/.*.swo
