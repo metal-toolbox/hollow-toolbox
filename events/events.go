@@ -3,11 +3,6 @@ package events
 
 import (
 	"context"
-	"fmt"
-	"time"
-
-	"go.infratographer.com/x/pubsubx"
-	"go.infratographer.com/x/urnx"
 )
 
 type (
@@ -23,11 +18,6 @@ type (
 )
 
 const (
-	// urnFormatString is the format for the uniform resource name.
-	//
-	// The string is to be formatted as "urn:<namespace>:<ResourceType>:<object UUID>"
-	urnFormatString = "urn:%s:%s:%s"
-
 	// Create action kind identifies objects that were created.
 	Create EventType = "create"
 
@@ -43,8 +33,8 @@ type Stream interface {
 	// Open sets up the stream connection.
 	Open() error
 
-	// PublishWithContext publishes the message to the message broker in an async manner.
-	PublishAsyncWithContext(ctx context.Context, resType ResourceType, eventType EventType, resID string, obj interface{}) error
+	// Publish publishes the message to the message broker.
+	Publish(ctx context.Context, subject string, msg []byte) error
 
 	// Subscribe subscribes to one or more subjects on the stream returning a message channel for subscribers to read from.
 	Subscribe(ctx context.Context) (MsgCh, error)
@@ -69,6 +59,10 @@ type Message interface {
 	// Nak the message as not processed on the stream.
 	Nak() error
 
+	// Term signals to the broker that the message processing has failed and the message
+	// must not be redelivered.
+	Term() error
+
 	// InProgress resets the redelivery timer for the message on the stream
 	// to indicate the message is being worked on.
 	InProgress() error
@@ -77,30 +71,10 @@ type Message interface {
 	Subject() string
 
 	// Data returns the data contained in the message.
-	Data() (*pubsubx.Message, error)
-
-	// SubjectURN returns the message subject URN.
-	SubjectURN(*pubsubx.Message) (*urnx.URN, error)
-
-	// ActorURN returns the actor URN from the message.
-	ActorURN(*pubsubx.Message) (*urnx.URN, error)
+	Data() []byte
 }
 
 // NewStream returns a Stream implementation.
 func NewStream(parameters StreamParameters) (Stream, error) {
 	return NewNatsBroker(parameters)
-}
-
-func newURN(namespace string, resType ResourceType, objID string) string {
-	return fmt.Sprintf(urnFormatString, namespace, resType, objID)
-}
-
-func newEventStreamMessage(appName, urnNamespace string, eventType EventType, resType ResourceType, objID string) *pubsubx.Message {
-	return &pubsubx.Message{
-		EventType:  string(eventType),
-		ActorURN:   "", // To be filled in with the data from the client request JWT.
-		SubjectURN: newURN(urnNamespace, resType, objID),
-		Timestamp:  time.Now().UTC(),
-		Source:     appName,
-	}
 }

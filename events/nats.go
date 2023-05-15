@@ -3,16 +3,12 @@ package events
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"reflect"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/nats-io/nats.go"
 	"github.com/pkg/errors"
-	"go.infratographer.com/x/pubsubx"
-	"go.infratographer.com/x/urnx"
 )
 
 var (
@@ -225,19 +221,11 @@ func (n *NatsJetstream) addConsumer() error {
 	return nil
 }
 
-// PublishAsyncWithContext publishes an event onto the NATS Jetstream.
-func (n *NatsJetstream) PublishAsyncWithContext(_ context.Context, resType ResourceType, eventType EventType, objID string, obj interface{}) error {
+// Publish publishes an event onto the NATS Jetstream. The caller is responsible for message
+// addressing and data serialization.
+func (n *NatsJetstream) Publish(_ context.Context, subject string, data []byte) error {
 	if n.jsctx == nil {
 		return errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
-	}
-
-	msg := newEventStreamMessage(n.parameters.AppName, n.parameters.StreamURNNamespace, eventType, resType, objID)
-	msg.AdditionalData = map[string]interface{}{"data": obj}
-	msg.EventType = string(eventType)
-
-	msgb, err := json.Marshal(msg)
-	if err != nil {
-		return err
 	}
 
 	// retry publishing for a while
@@ -245,12 +233,8 @@ func (n *NatsJetstream) PublishAsyncWithContext(_ context.Context, resType Resou
 		nats.RetryAttempts(-1),
 	}
 
-	subject := fmt.Sprintf("%s.%s.%s", n.parameters.PublisherSubjectPrefix, resType, eventType)
-	if _, err := n.jsctx.PublishAsync(subject, msgb, options...); err != nil {
-		return err
-	}
-
-	return nil
+	_, err := n.jsctx.Publish(subject, data, options...)
+	return err
 }
 
 // Subscribe to all configured SubscribeSubjects
@@ -297,15 +281,18 @@ func (n *NatsJetstream) subscribeAsPull(_ context.Context) error {
 	return nil
 }
 
-// PullMsg pulls upto batch count of messages from the stream through the pull based subscription.
+// XXX: the ergonomics here are weird, because we're handling potentially multiple subscriptions
+// in a single call, and an error on any single retrieve just aborts the group operation.
+
+// PullMsg pulls up to the batch count of messages from each pull-based subscription to
+// subjects on the stream.
 func (n *NatsJetstream) PullMsg(_ context.Context, batch int) ([]Message, error) {
 	if n.jsctx == nil {
 		return nil, errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
 	}
 
-	msgs := []Message{}
-
 	var hasPullSubscription bool
+	var msgs []Message
 
 	for _, subscription := range n.subscriptions {
 		if subscription.Type() != nats.PullSubscription {
@@ -314,14 +301,11 @@ func (n *NatsJetstream) PullMsg(_ context.Context, batch int) ([]Message, error)
 
 		hasPullSubscription = true
 
-		natsMsgs, err := subscription.Fetch(batch)
+		subMsgs, err := subscription.Fetch(batch)
 		if err != nil {
 			return nil, errors.Wrap(ErrNatsMsgPull, err.Error())
 		}
-
-		for _, msg := range natsMsgs {
-			msgs = append(msgs, &NatsMsg{natsMsg: msg})
-		}
+		msgs = append(msgs, msgIfFromNats(subMsgs...)...)
 	}
 
 	if !hasPullSubscription {
@@ -331,13 +315,11 @@ func (n *NatsJetstream) PullMsg(_ context.Context, batch int) ([]Message, error)
 	return msgs, nil
 }
 
-func (n *NatsJetstream) subscriptionCallback(natsMsg *nats.Msg) {
-	msg := &NatsMsg{natsMsg: natsMsg}
-
+func (n *NatsJetstream) subscriptionCallback(msg *nats.Msg) {
 	select {
 	case <-time.After(subscriptionCallbackTimeout):
-		_ = natsMsg.NakWithDelay(nakDelay)
-	case n.subscriberCh <- msg:
+		_ = msg.NakWithDelay(nakDelay)
+	case n.subscriberCh <- &natsMsg{msg: msg}:
 	}
 }
 
@@ -356,51 +338,4 @@ func (n *NatsJetstream) Close() error {
 	}
 
 	return errs
-}
-
-// NatsMsg implements the Stream Message interface
-type NatsMsg struct {
-	natsMsg *nats.Msg
-	Payload json.RawMessage
-}
-
-// Ack notifies the stream the message has been processed.
-func (m *NatsMsg) Ack() error {
-	return m.natsMsg.Ack()
-}
-
-// Nak notifies the stream the message could not be processed and has to be redelivered.
-func (m *NatsMsg) Nak() error {
-	return m.natsMsg.Nak()
-}
-
-// InProgress resets the redelivery timer on the message and so notifying the stream
-// its being processed.
-func (m *NatsMsg) InProgress() error {
-	return m.natsMsg.InProgress()
-}
-
-// Subject returns the subject on the message.
-func (m *NatsMsg) Subject() string {
-	return m.natsMsg.Subject
-}
-
-// Data serializes and returns the message as a *pubsubx.Message.
-func (m *NatsMsg) Data() (*pubsubx.Message, error) {
-	msg := &pubsubx.Message{}
-	if err := json.Unmarshal(m.natsMsg.Data, msg); err != nil {
-		return nil, err
-	}
-
-	return msg, nil
-}
-
-// SubjectURN returns the message subject URN.
-func (m *NatsMsg) SubjectURN(msg *pubsubx.Message) (*urnx.URN, error) {
-	return urnx.Parse(msg.SubjectURN)
-}
-
-// ActorURN returns the message actor URN.
-func (m *NatsMsg) ActorURN(msg *pubsubx.Message) (*urnx.URN, error) {
-	return urnx.Parse(msg.ActorURN)
 }
