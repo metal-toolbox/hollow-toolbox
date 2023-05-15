@@ -66,6 +66,9 @@ type Message interface {
 	// Ack the message as processed on the stream.
 	Ack() error
 
+	// Instructs the server to stop redelivery of a message without acknowledging it as successfully processed.
+	Term() error
+
 	// Nak the message as not processed on the stream.
 	Nak() error
 

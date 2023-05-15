@@ -369,6 +369,11 @@ func (m *NatsMsg) Ack() error {
 	return m.natsMsg.Ack()
 }
 
+// Instructs the server to stop redelivery of a message without acknowledging it as successfully processed.
+func (m *NatsMsg) Term() error {
+	return m.natsMsg.Term()
+}
+
 // Nak notifies the stream the message could not be processed and has to be redelivered.
 func (m *NatsMsg) Nak() error {
 	return m.natsMsg.Nak()
