@@ -209,6 +209,7 @@ func (n *NatsJetstream) addConsumer() error {
 	// https://pkg.go.dev/github.com/nats-io/nats.go#ConsumerConfig
 	cfg := &nats.ConsumerConfig{
 		Durable:       n.parameters.Consumer.Name,
+		Name:          n.parameters.Consumer.Name,
 		MaxDeliver:    -1,
 		AckPolicy:     nats.AckExplicitPolicy,
 		AckWait:       n.parameters.Consumer.AckWait,
@@ -300,7 +301,7 @@ func (n *NatsJetstream) subscribeAsPull(_ context.Context) error {
 // PullMsg pulls upto batch count of messages from the stream through the pull based subscription.
 func (n *NatsJetstream) PullMsg(_ context.Context, batch int) ([]Message, error) {
 	if n.jsctx == nil {
-		return nil, errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
+		return nil, errors.Wrap(ErrNatsJetstream, "Jetstream context is not setup")
 	}
 
 	msgs := []Message{}
