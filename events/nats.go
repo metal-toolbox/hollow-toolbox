@@ -3,6 +3,7 @@ package events
 
 import (
 	"context"
+	"log"
 	"reflect"
 	"time"
 
@@ -270,8 +271,11 @@ func (n *NatsJetstream) subscribeAsPull(_ context.Context) error {
 	}
 
 	for _, subject := range n.parameters.Consumer.SubscribeSubjects {
-		subscription, err := n.jsctx.PullSubscribe(subject, n.parameters.AppName, nats.BindStream(n.parameters.Stream.Name))
+		subscription, err := n.jsctx.PullSubscribe(subject, n.parameters.Consumer.Name,
+			nats.BindStream(n.parameters.Stream.Name))
 		if err != nil {
+			log.Printf("PullSubscribe with subject=%s, durable=%s, stream=%s => %v", subject, n.parameters.AppName,
+				n.parameters.Stream.Name, err)
 			return errors.Wrap(ErrSubscription, err.Error()+": "+subject)
 		}
 
