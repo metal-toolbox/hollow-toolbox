@@ -2,6 +2,7 @@
 package events
 
 import (
+	"context"
 	"testing"
 
 	"github.com/nats-io/nats.go"
@@ -40,4 +41,45 @@ func TestJetstreamFromConn(t *testing.T) {
 	_, err = AsNatsJetStreamContext(njs).AccountInfo()
 	require.NoError(t, err, "unexpected error using JetStream")
 	njs.Close()
+}
+
+func TestPublishAndSubscribe(t *testing.T) {
+	jsSrv := natsTest.StartJetStreamServer(t)
+	defer natsTest.ShutdownJetStream(t, jsSrv)
+
+	jsConn, _ := natsTest.JetStreamContext(t, jsSrv)
+	njs := NewJetstreamFromConn(jsConn)
+	defer njs.Close()
+
+	njs.parameters = &NatsOptions{
+		AppName: "TestPublishAndSubscribe",
+		Stream: &NatsStreamOptions{
+			Name: "test_stream",
+			Subjects: []string{
+				"test",
+			},
+			Retention: "workQueue",
+		},
+		Consumer: &NatsConsumerOptions{
+			Name: "test_consumer",
+			Pull: true,
+			SubscribeSubjects: []string{
+				"test",
+			},
+			FilterSubject: "test",
+		},
+	}
+	require.NoError(t, njs.addStream())
+	require.NoError(t, njs.addConsumer())
+
+	_, err := njs.Subscribe(context.TODO())
+	require.NoError(t, err)
+
+	payload := []byte("test data")
+	require.NoError(t, njs.Publish(context.TODO(), "test", payload))
+
+	msgs, err := njs.PullMsg(context.TODO(), 1)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(msgs))
+	require.Equal(t, payload, msgs[0].Data())
 }
