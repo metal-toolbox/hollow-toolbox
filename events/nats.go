@@ -5,6 +5,7 @@ import (
 	"context"
 	"log"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -234,7 +235,13 @@ func (n *NatsJetstream) Publish(_ context.Context, subject string, data []byte) 
 		nats.RetryAttempts(-1),
 	}
 
-	_, err := n.jsctx.Publish(subject, data, options...)
+	fullSubject := strings.Join(
+		[]string{
+			n.parameters.PublisherSubjectPrefix,
+			subject,
+		}, ".")
+
+	_, err := n.jsctx.Publish(fullSubject, data, options...)
 	return err
 }
 

@@ -56,7 +56,7 @@ func TestPublishAndSubscribe(t *testing.T) {
 		Stream: &NatsStreamOptions{
 			Name: "test_stream",
 			Subjects: []string{
-				"test",
+				"pre.test",
 			},
 			Retention: "workQueue",
 		},
@@ -64,10 +64,11 @@ func TestPublishAndSubscribe(t *testing.T) {
 			Name: "test_consumer",
 			Pull: true,
 			SubscribeSubjects: []string{
-				"test",
+				"pre.test",
 			},
-			FilterSubject: "test",
+			FilterSubject: "pre.test",
 		},
+		PublisherSubjectPrefix: "pre",
 	}
 	require.NoError(t, njs.addStream())
 	require.NoError(t, njs.addConsumer())
