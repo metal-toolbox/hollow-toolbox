@@ -224,8 +224,9 @@ func (n *NatsJetstream) addConsumer() error {
 }
 
 // Publish publishes an event onto the NATS Jetstream. The caller is responsible for message
-// addressing and data serialization.
-func (n *NatsJetstream) Publish(_ context.Context, subject string, data []byte) error {
+// addressing and data serialization. NOTE: The subject passed here will be prepended with any
+// configured PublisherSubjectPrefix.
+func (n *NatsJetstream) Publish(_ context.Context, subjectSuffix string, data []byte) error {
 	if n.jsctx == nil {
 		return errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
 	}
@@ -238,7 +239,7 @@ func (n *NatsJetstream) Publish(_ context.Context, subject string, data []byte) 
 	fullSubject := strings.Join(
 		[]string{
 			n.parameters.PublisherSubjectPrefix,
-			subject,
+			subjectSuffix,
 		}, ".")
 
 	_, err := n.jsctx.Publish(fullSubject, data, options...)
