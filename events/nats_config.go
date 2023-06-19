@@ -119,6 +119,9 @@ type NatsStreamOptions struct {
 	//
 	// https://docs.nats.io/using-nats/developer/develop_jetstream/model_deep_dive#stream-limits-retention-and-policy
 	Retention string `mapstructure:"retention"`
+
+	// Replicas specifies the number of replicas we use for this stream
+	Replicas int `mapstructure:"replicas"`
 }
 
 func (o *NatsOptions) validate() error {
@@ -166,6 +169,10 @@ func (o *NatsOptions) validatePrereqs() error {
 }
 
 func (s *NatsStreamOptions) validate() error {
+	if s == nil {
+		return errors.Wrap(ErrNatsConfig, "stream configuration is missing")
+	}
+
 	if s.Retention == "" {
 		s.Retention = "limits"
 	}
@@ -186,6 +193,10 @@ func (s *NatsStreamOptions) validate() error {
 }
 
 func (c *NatsConsumerOptions) validate() error {
+	if c == nil {
+		return errors.Wrap(ErrNatsConfig, "consumer configuration is missing")
+	}
+
 	if c.Name == "" {
 		return errors.Wrap(ErrNatsConfig, "consumer parameters require a Name")
 	}

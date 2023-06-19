@@ -45,6 +45,13 @@ type NatsJetstream struct {
 	subscriberCh  MsgCh
 }
 
+func (n *NatsJetstream) streamReplicas() int {
+	if n.parameters.Stream.Replicas == 0 {
+		return 1
+	}
+	return n.parameters.Stream.Replicas
+}
+
 // Add some conversions for functions/APIs that expect NATS primitive types. This allows consumers of
 // NatsJetsream to convert easily to the types they need, without exporting the members or coercing
 // and direct clients/holders of NatsJetstream to do this conversion.
@@ -178,6 +185,7 @@ func (n *NatsJetstream) addStream() error {
 			Name:      n.parameters.Stream.Name,
 			Subjects:  n.parameters.Stream.Subjects,
 			Retention: retention,
+			Replicas:  n.streamReplicas(),
 		},
 	)
 
@@ -198,7 +206,7 @@ func (n *NatsJetstream) addConsumer() error {
 	}
 
 	// lookup consumers in stream before attempting to add consumer
-	for name := range n.jsctx.ConsumerNames(n.parameters.Stream.Name) {
+	for name := range n.jsctx.ConsumerNames(n.parameters.Consumer.Name) {
 		if name == n.parameters.Consumer.Name {
 			return nil
 		}

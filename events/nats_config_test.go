@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNatsOptions_ValidatePrereqs(t *testing.T) {
@@ -77,6 +78,24 @@ func TestNatsOptions_ValidatePrereqs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNilParams(t *testing.T) {
+	t.Parallel()
+	t.Run("nil stream parameters", func(t *testing.T) {
+		t.Parallel()
+		o := &NatsOptions{}
+		var err error
+		require.NotPanics(t, func() { err = o.Stream.validate() }, "stream param panic")
+		require.ErrorIs(t, err, ErrNatsConfig, "stream validate error")
+	})
+	t.Run("nil consumer parameters", func(t *testing.T) {
+		t.Parallel()
+		o := &NatsOptions{}
+		var err error
+		require.NotPanics(t, func() { err = o.Consumer.validate() }, "consumer param panic")
+		require.ErrorIs(t, err, ErrNatsConfig, "consumer validate error")
+	})
 }
 
 func TestNatsStreamOptions_Validate(t *testing.T) {
