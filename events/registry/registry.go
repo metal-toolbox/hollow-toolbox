@@ -28,6 +28,7 @@ var (
 
 	ErrRegistryUninitialized         = errors.New("controller registry uninitialized")
 	ErrRegistryPreviouslyInitialized = errors.New("controller registry previously initialized")
+	ErrBadRegistryData               = errors.New("bad registry data")
 )
 
 func InitializeActiveControllerRegistry(njs *events.NatsJetstream) error {
@@ -90,4 +91,22 @@ func DeregisterController(id ControllerID) error {
 		return ErrRegistryUninitialized
 	}
 	return registry.Delete(id.String())
+}
+
+func LastContact(id ControllerID) (time.Time, error) {
+	var zt time.Time
+	if registry == nil {
+		return zt, ErrRegistryUninitialized
+	}
+	entry, err := registry.Get(id.String())
+	if err != nil {
+		return zt, err // this can either be a communication error or nats.ErrKeyNotFound
+	}
+	// if we have an entry the controller was alive in the last TTL period
+	var ar activityRecord
+	err = json.Unmarshal(entry.Value(), &ar)
+	if err != nil {
+		return zt, ErrBadRegistryData // consumers should *probably* treat this as a success?
+	}
+	return ar.LastActive, nil
 }

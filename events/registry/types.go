@@ -1,10 +1,17 @@
+// nolint: wsl // it's useless
 package registry
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+)
+
+var (
+	ErrBadFormat = errors.New("bad worker id format")
 )
 
 type ControllerID interface {
@@ -21,6 +28,21 @@ type workerUUID struct {
 
 func (id *workerUUID) String() string {
 	return id.appName + "/" + id.uuid.String()
+}
+
+func ControllerIDFromString(s string) (ControllerID, error) {
+	name, uuidStr, found := strings.Cut(s, "/")
+	if !found {
+		return nil, fmt.Errorf("%w: missing delimiter", ErrBadFormat)
+	}
+	uuid, err := uuid.Parse(uuidStr)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrBadFormat, err.Error())
+	}
+	return &workerUUID{
+		appName: name,
+		uuid:    uuid,
+	}, nil
 }
 
 func (id *workerUUID) updateVersion(rev uint64) {

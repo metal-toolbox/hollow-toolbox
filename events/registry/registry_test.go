@@ -4,6 +4,7 @@ package registry
 import (
 	"testing"
 
+	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/require"
 
 	"go.hollow.sh/toolbox/events"
@@ -22,6 +23,9 @@ func TestAppLifecycle(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, ErrRegistryUninitialized, err)
 	err = DeregisterController(id)
+	require.Error(t, err)
+	require.Equal(t, ErrRegistryUninitialized, err)
+	_, err = LastContact(id)
 	require.Error(t, err)
 	require.Equal(t, ErrRegistryUninitialized, err)
 
@@ -43,6 +47,11 @@ func TestAppLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	err = ControllerCheckin(id)
 	require.NoError(t, err)
+	_, err = LastContact(id)
+	require.NoError(t, err)
 	err = DeregisterController(id)
 	require.NoError(t, err)
+	_, err = LastContact(id)
+	require.Error(t, err)
+	require.ErrorIs(t, err, nats.ErrKeyNotFound)
 }
