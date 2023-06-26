@@ -37,7 +37,7 @@ func ControllerIDFromString(s string) (ControllerID, error) {
 	}
 	uuid, err := uuid.Parse(uuidStr)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrBadFormat, err)
+		return nil, fmt.Errorf("%w: %s", ErrBadFormat, err.Error())
 	}
 	return &workerUUID{
 		appName: name,
