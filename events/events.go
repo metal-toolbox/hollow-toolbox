@@ -72,6 +72,9 @@ type Message interface {
 
 	// Data returns the data contained in the message.
 	Data() []byte
+
+	// ExtractOtelTraceContext returns a context populated with the parent trace if any.
+	ExtractOtelTraceContext(ctx context.Context) context.Context
 }
 
 // NewStream returns a Stream implementation.
