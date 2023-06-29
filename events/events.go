@@ -28,6 +28,11 @@ const (
 	Delete EventType = "delete"
 )
 
+// when updating any of the interfaces here, make sure to regenerate the mocks
+//
+// mockgen -package=mock_events -source=events/events.go > events/mock/events.go
+//
+
 // Stream provides methods to interact with the event stream.
 type Stream interface {
 	// Open sets up the stream connection.
