@@ -2,6 +2,7 @@
 package events
 
 import (
+	"context"
 	"testing"
 
 	"github.com/nats-io/nats.go"
@@ -32,6 +33,10 @@ func (_ *bogusMsg) Subject() string {
 
 func (_ *bogusMsg) Data() []byte {
 	return nil
+}
+
+func (_ *bogusMsg) ExtractOtelTraceContext(ctx context.Context) context.Context {
+	return ctx
 }
 
 func TestConversions(t *testing.T) {
