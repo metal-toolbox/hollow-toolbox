@@ -11,6 +11,8 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/nats-io/nats.go"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 var (
@@ -226,7 +228,7 @@ func (n *NatsJetstream) addConsumer() error {
 // Publish publishes an event onto the NATS Jetstream. The caller is responsible for message
 // addressing and data serialization. NOTE: The subject passed here will be prepended with any
 // configured PublisherSubjectPrefix.
-func (n *NatsJetstream) Publish(_ context.Context, subjectSuffix string, data []byte) error {
+func (n *NatsJetstream) Publish(ctx context.Context, subjectSuffix string, data []byte) error {
 	if n.jsctx == nil {
 		return errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
 	}
@@ -242,8 +244,22 @@ func (n *NatsJetstream) Publish(_ context.Context, subjectSuffix string, data []
 			subjectSuffix,
 		}, ".")
 
-	_, err := n.jsctx.Publish(fullSubject, data, options...)
+	msg := nats.NewMsg(fullSubject)
+	msg.Data = data
+
+	// inject otel trace context
+	injectOtelTraceContext(ctx, msg)
+
+	_, err := n.jsctx.PublishMsg(msg, options...)
 	return err
+}
+
+func injectOtelTraceContext(ctx context.Context, msg *nats.Msg) {
+	if msg.Header == nil {
+		msg.Header = make(nats.Header)
+	}
+
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(msg.Header))
 }
 
 // Subscribe to all configured SubscribeSubjects

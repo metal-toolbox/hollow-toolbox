@@ -2,8 +2,12 @@
 package events
 
 import (
+	"context"
+
 	"github.com/nats-io/nats.go"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 // here we implement the Message interface for nats.Msg
@@ -48,6 +52,14 @@ func (nm *natsMsg) Subject() string {
 
 func (nm *natsMsg) Data() []byte {
 	return nm.msg.Data
+}
+
+func (nm *natsMsg) ExtractOtelTraceContext(ctx context.Context) context.Context {
+	if nm == nil || nm.msg.Header == nil {
+		return ctx
+	}
+
+	return otel.GetTextMapPropagator().Extract(ctx, propagation.HeaderCarrier(nm.msg.Header))
 }
 
 func msgIfFromNats(natsMsgs ...*nats.Msg) []Message {
