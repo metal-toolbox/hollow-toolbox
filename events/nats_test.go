@@ -6,7 +6,12 @@ import (
 	"testing"
 
 	"github.com/nats-io/nats.go"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	traceSDK "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 
 	natsTest "go.hollow.sh/toolbox/events/internal/test"
 )
@@ -83,4 +88,50 @@ func TestPublishAndSubscribe(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, len(msgs))
 	require.Equal(t, payload, msgs[0].Data())
+}
+
+func TestInjectOtelTraceContext(t *testing.T) {
+	// set the tracing propagator so its available for injection
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}),
+	)
+
+	// setup a new trace provider
+	ctx, span := traceSDK.NewTracerProvider().Tracer("testing").Start(context.Background(), "foo.bar")
+	defer span.End()
+
+	msg := nats.NewMsg("foo.bar")
+	msg.Data = []byte(`hello`)
+
+	injectOtelTraceContext(ctx, msg)
+
+	assert.NotEmpty(t, msg.Header.Get("Traceparent"))
+}
+
+func TestExtractOtelTraceContext(t *testing.T) {
+	// set the tracing propagator so its available for injection
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}),
+	)
+
+	// setup a new trace provider
+	ctx, span := traceSDK.NewTracerProvider().Tracer("testing").Start(context.Background(), "foo.bar")
+	defer span.End()
+
+	msg := nats.NewMsg("foo.bar")
+	msg.Data = []byte(`hello`)
+
+	// inject
+	injectOtelTraceContext(ctx, msg)
+
+	// msg header gets a trace parent added
+	traceParent := msg.Header.Get("Traceparent")
+
+	// wrap natsMsg to pass to extract method
+	nm := &natsMsg{msg}
+
+	ctxWithTrace := nm.ExtractOtelTraceContext(context.Background())
+	got := trace.SpanFromContext(ctxWithTrace).SpanContext().TraceID().String()
+
+	assert.Contains(t, traceParent, got)
 }
