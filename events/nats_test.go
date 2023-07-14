@@ -88,6 +88,10 @@ func TestPublishAndSubscribe(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, len(msgs))
 	require.Equal(t, payload, msgs[0].Data())
+
+	msgs, err = njs.PullMsg(context.TODO(), 1)
+	require.Error(t, err)
+	require.ErrorIs(t, err, nats.ErrTimeout)
 }
 
 func TestInjectOtelTraceContext(t *testing.T) {
