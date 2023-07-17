@@ -331,7 +331,7 @@ func (n *NatsJetstream) PullMsg(_ context.Context, batch int) ([]Message, error)
 
 		subMsgs, err := subscription.Fetch(batch)
 		if err != nil {
-			return nil, errors.Wrap(ErrNatsMsgPull, err.Error())
+			return nil, errors.Wrap(err, ErrNatsMsgPull.Error())
 		}
 		msgs = append(msgs, msgIfFromNats(subMsgs...)...)
 	}
