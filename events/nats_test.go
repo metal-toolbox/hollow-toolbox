@@ -4,6 +4,7 @@ package events
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/assert"
@@ -92,6 +93,67 @@ func TestPublishAndSubscribe(t *testing.T) {
 	msgs, err = njs.PullMsg(context.TODO(), 1)
 	require.Error(t, err)
 	require.ErrorIs(t, err, nats.ErrTimeout)
+}
+
+func Test_addConsumer(t *testing.T) {
+	jsSrv := natsTest.StartJetStreamServer(t)
+	defer natsTest.ShutdownJetStream(t, jsSrv)
+
+	jsConn, _ := natsTest.JetStreamContext(t, jsSrv)
+	njs := NewJetstreamFromConn(jsConn)
+	defer njs.Close()
+
+	consumerCfg := &NatsConsumerOptions{
+		Name:       "test_consumer",
+		QueueGroup: "test",
+		Pull:       true,
+		SubscribeSubjects: []string{
+			"pre.test",
+		},
+		FilterSubject: "pre.test",
+		MaxAckPending: 10,
+		AckWait:       600 * time.Second,
+	}
+
+	njs.parameters = &NatsOptions{
+		AppName: "TestPublishAndSubscribe",
+		Stream: &NatsStreamOptions{
+			Name: "test_stream",
+			Subjects: []string{
+				"pre.test",
+			},
+			Retention: "workQueue",
+		},
+		Consumer:               consumerCfg,
+		PublisherSubjectPrefix: "pre",
+	}
+
+	require.NoError(t, njs.addStream())
+
+	// add config
+	require.NoError(t, njs.addConsumer())
+
+	consumerInfo, err := njs.jsctx.ConsumerInfo("test_stream", consumerCfg.Name)
+	require.NoError(t, err)
+
+	assert.Equal(t, consumerCfg.Name, consumerInfo.Name)
+	assert.Equal(t, false, consumerInfo.PushBound)
+	assert.Equal(t, consumerCfg.MaxAckPending, consumerInfo.Config.MaxAckPending)
+	assert.Equal(t, -1, consumerInfo.Config.MaxDeliver)
+	assert.Equal(t, nats.AckExplicitPolicy, consumerInfo.Config.AckPolicy)
+	assert.Equal(t, consumerCfg.AckWait, consumerInfo.Config.AckWait)
+	assert.Equal(t, nats.DeliverAllPolicy, consumerInfo.Config.DeliverPolicy)
+	assert.Equal(t, consumerCfg.QueueGroup, consumerInfo.Config.DeliverGroup)
+	assert.Equal(t, consumerCfg.FilterSubject, consumerInfo.Config.FilterSubject)
+
+	// update config
+	consumerCfg.MaxAckPending = 30
+	require.NoError(t, njs.addConsumer())
+
+	consumerInfo, err = njs.jsctx.ConsumerInfo("test_stream", consumerCfg.Name)
+	require.NoError(t, err)
+
+	assert.Equal(t, consumerCfg.MaxAckPending, consumerInfo.Config.MaxAckPending)
 }
 
 func TestInjectOtelTraceContext(t *testing.T) {

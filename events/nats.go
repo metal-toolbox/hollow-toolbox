@@ -31,6 +31,9 @@ var (
 	// ErrNatsJetstreamAddConsumer is returned when theres an error adding a consumer to the NATS Jetstream.
 	ErrNatsJetstreamAddConsumer = errors.New("error adding consumer on NATS Jetstream")
 
+	// ErrNatsJetstreamUpdateConsumer is returned when theres an error updating a consumer configuration on the NATS Jetstream.
+	ErrNatsJetstreamUpdateConsumer = errors.New("error updating consumer configuration on NATS Jetstream")
+
 	// ErrNatsMsgPull is returned when theres and error pulling a message from a NATS Jetstream.
 	ErrNatsMsgPull = errors.New("error fetching message from NATS Jetstream")
 
@@ -199,13 +202,6 @@ func (n *NatsJetstream) addConsumer() error {
 		return errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
 	}
 
-	// lookup consumers in stream before attempting to add consumer
-	for name := range n.jsctx.ConsumerNames(n.parameters.Stream.Name) {
-		if name == n.parameters.Consumer.Name {
-			return nil
-		}
-	}
-
 	// https://pkg.go.dev/github.com/nats-io/nats.go#ConsumerConfig
 	cfg := &nats.ConsumerConfig{
 		Durable:       n.parameters.Consumer.Name,
@@ -216,6 +212,17 @@ func (n *NatsJetstream) addConsumer() error {
 		DeliverPolicy: nats.DeliverAllPolicy,
 		DeliverGroup:  n.parameters.Consumer.QueueGroup,
 		FilterSubject: n.parameters.Consumer.FilterSubject,
+	}
+
+	// Update consumer configuration when one exists
+	for name := range n.jsctx.ConsumerNames(n.parameters.Stream.Name) {
+		if name == n.parameters.Consumer.Name {
+			if _, err := n.jsctx.UpdateConsumer(n.parameters.Stream.Name, cfg); err != nil {
+				return errors.Wrap(ErrNatsJetstreamUpdateConsumer, err.Error())
+			}
+
+			return nil
+		}
 	}
 
 	if _, err := n.jsctx.AddConsumer(n.parameters.Stream.Name, cfg); err != nil {
