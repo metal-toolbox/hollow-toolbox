@@ -139,10 +139,10 @@ func Test_addConsumer(t *testing.T) {
 	assert.Equal(t, consumerCfg.Name, consumerInfo.Name)
 	assert.Equal(t, false, consumerInfo.PushBound)
 	assert.Equal(t, consumerCfg.MaxAckPending, consumerInfo.Config.MaxAckPending)
-	assert.Equal(t, -1, consumerInfo.Config.MaxDeliver)
-	assert.Equal(t, nats.AckExplicitPolicy, consumerInfo.Config.AckPolicy)
+	assert.Equal(t, consumerMaxDeliver, consumerInfo.Config.MaxDeliver)
+	assert.Equal(t, consumerAckPolicy, consumerInfo.Config.AckPolicy)
 	assert.Equal(t, consumerCfg.AckWait, consumerInfo.Config.AckWait)
-	assert.Equal(t, nats.DeliverAllPolicy, consumerInfo.Config.DeliverPolicy)
+	assert.Equal(t, consumerDeliverPolicy, consumerInfo.Config.DeliverPolicy)
 	assert.Equal(t, consumerCfg.QueueGroup, consumerInfo.Config.DeliverGroup)
 	assert.Equal(t, consumerCfg.FilterSubject, consumerInfo.Config.FilterSubject)
 

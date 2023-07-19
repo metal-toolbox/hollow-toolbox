@@ -41,6 +41,11 @@ var (
 	ErrSubscription = errors.New("error subscribing to stream")
 )
 
+const (
+	consumerMaxDeliver = -1
+	consumerAckPolicy  = nats.AckExplicitPolicy
+)
+
 // NatsJetstream wraps the NATs JetStream connector to implement the Stream interface.
 type NatsJetstream struct {
 	jsctx         nats.JetStreamContext
@@ -216,9 +221,14 @@ func (n *NatsJetstream) addConsumer() error {
 
 	// Update consumer configuration when one exists
 	for name := range n.jsctx.ConsumerNames(n.parameters.Stream.Name) {
-		if name == n.parameters.Consumer.Name {
+		consumerInfo, err := n.jsctx.ConsumerInfo(n.parameters.Stream.Name, n.parameters.Consumer.Name)
+		if err != nil {
+			return errors.Wrap(err, ErrNatsJetstreamAddConsumer.Error())
+		}
+
+		if name == n.parameters.Consumer.Name && !n.consumerConfigIsEqual(consumerInfo) {
 			if _, err := n.jsctx.UpdateConsumer(n.parameters.Stream.Name, cfg); err != nil {
-				return errors.Wrap(ErrNatsJetstreamUpdateConsumer, err.Error())
+				return errors.Wrap(err, ErrNatsJetstreamUpdateConsumer.Error())
 			}
 
 			return nil
@@ -226,10 +236,35 @@ func (n *NatsJetstream) addConsumer() error {
 	}
 
 	if _, err := n.jsctx.AddConsumer(n.parameters.Stream.Name, cfg); err != nil {
-		return errors.Wrap(ErrNatsJetstreamAddConsumer, err.Error())
+		return errors.Wrap(err, ErrNatsJetstreamAddConsumer.Error())
 	}
 
 	return nil
+}
+
+func (n *NatsJetstream) consumerConfigIsEqual(consumerInfo *nats.ConsumerInfo) bool {
+	switch {
+	case consumerInfo.Config.MaxDeliver != consumerMaxDeliver:
+		return false
+	case consumerInfo.Config.AckPolicy != consumerAckPolicy:
+		return false
+	case consumerInfo.Config.DeliverPolicy != consumerDeliverPolicy:
+		return false
+	case consumerInfo.Name != n.parameters.Consumer.Name:
+		return false
+	case consumerInfo.Config.Durable != n.parameters.Consumer.Name:
+		return false
+	case consumerInfo.Config.MaxAckPending != n.parameters.Consumer.MaxAckPending:
+		return false
+	case consumerInfo.Config.AckWait != n.parameters.Consumer.AckWait:
+		return false
+	case consumerInfo.Config.DeliverGroup != n.parameters.Consumer.QueueGroup:
+		return false
+	case consumerInfo.Config.FilterSubject != n.parameters.Consumer.FilterSubject:
+		return false
+	default:
+		return true
+	}
 }
 
 // Publish publishes an event onto the NATS Jetstream. The caller is responsible for message
