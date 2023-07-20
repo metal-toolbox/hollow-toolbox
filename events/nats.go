@@ -31,11 +31,19 @@ var (
 	// ErrNatsJetstreamAddConsumer is returned when theres an error adding a consumer to the NATS Jetstream.
 	ErrNatsJetstreamAddConsumer = errors.New("error adding consumer on NATS Jetstream")
 
+	// ErrNatsJetstreamUpdateConsumer is returned when theres an error updating a consumer configuration on the NATS Jetstream.
+	ErrNatsJetstreamUpdateConsumer = errors.New("error updating consumer configuration on NATS Jetstream")
+
 	// ErrNatsMsgPull is returned when theres and error pulling a message from a NATS Jetstream.
 	ErrNatsMsgPull = errors.New("error fetching message from NATS Jetstream")
 
 	// ErrSubscription is returned when an error in the consumer subscription occurs.
 	ErrSubscription = errors.New("error subscribing to stream")
+)
+
+const (
+	consumerMaxDeliver = -1
+	consumerAckPolicy  = nats.AckExplicitPolicy
 )
 
 // NatsJetstream wraps the NATs JetStream connector to implement the Stream interface.
@@ -199,13 +207,6 @@ func (n *NatsJetstream) addConsumer() error {
 		return errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
 	}
 
-	// lookup consumers in stream before attempting to add consumer
-	for name := range n.jsctx.ConsumerNames(n.parameters.Stream.Name) {
-		if name == n.parameters.Consumer.Name {
-			return nil
-		}
-	}
-
 	// https://pkg.go.dev/github.com/nats-io/nats.go#ConsumerConfig
 	cfg := &nats.ConsumerConfig{
 		Durable:       n.parameters.Consumer.Name,
@@ -218,11 +219,52 @@ func (n *NatsJetstream) addConsumer() error {
 		FilterSubject: n.parameters.Consumer.FilterSubject,
 	}
 
+	// Update consumer configuration when one exists
+	for name := range n.jsctx.ConsumerNames(n.parameters.Stream.Name) {
+		consumerInfo, err := n.jsctx.ConsumerInfo(n.parameters.Stream.Name, n.parameters.Consumer.Name)
+		if err != nil {
+			return errors.Wrap(err, ErrNatsJetstreamAddConsumer.Error())
+		}
+
+		if name == n.parameters.Consumer.Name && !n.consumerConfigIsEqual(consumerInfo) {
+			if _, err := n.jsctx.UpdateConsumer(n.parameters.Stream.Name, cfg); err != nil {
+				return errors.Wrap(err, ErrNatsJetstreamUpdateConsumer.Error())
+			}
+
+			return nil
+		}
+	}
+
 	if _, err := n.jsctx.AddConsumer(n.parameters.Stream.Name, cfg); err != nil {
-		return errors.Wrap(ErrNatsJetstreamAddConsumer, err.Error())
+		return errors.Wrap(err, ErrNatsJetstreamAddConsumer.Error())
 	}
 
 	return nil
+}
+
+func (n *NatsJetstream) consumerConfigIsEqual(consumerInfo *nats.ConsumerInfo) bool {
+	switch {
+	case consumerInfo.Config.MaxDeliver != consumerMaxDeliver:
+		return false
+	case consumerInfo.Config.AckPolicy != consumerAckPolicy:
+		return false
+	case consumerInfo.Config.DeliverPolicy != consumerDeliverPolicy:
+		return false
+	case consumerInfo.Name != n.parameters.Consumer.Name:
+		return false
+	case consumerInfo.Config.Durable != n.parameters.Consumer.Name:
+		return false
+	case consumerInfo.Config.MaxAckPending != n.parameters.Consumer.MaxAckPending:
+		return false
+	case consumerInfo.Config.AckWait != n.parameters.Consumer.AckWait:
+		return false
+	case consumerInfo.Config.DeliverGroup != n.parameters.Consumer.QueueGroup:
+		return false
+	case consumerInfo.Config.FilterSubject != n.parameters.Consumer.FilterSubject:
+		return false
+	default:
+		return true
+	}
 }
 
 // Publish publishes an event onto the NATS Jetstream. The caller is responsible for message
