@@ -223,7 +223,11 @@ func (n *NatsJetstream) addConsumer() error {
 	for name := range n.jsctx.ConsumerNames(n.parameters.Stream.Name) {
 		consumerInfo, err := n.jsctx.ConsumerInfo(n.parameters.Stream.Name, n.parameters.Consumer.Name)
 		if err != nil {
-			return errors.Wrap(err, ErrNatsJetstreamAddConsumer.Error())
+			if errors.Is(err, nats.ErrConsumerNotFound) {
+				break
+			}
+
+			return errors.Wrap(err, ErrNatsJetstreamAddConsumer.Error()+" consumer.Name="+n.parameters.Consumer.Name)
 		}
 
 		if name == n.parameters.Consumer.Name && !n.consumerConfigIsEqual(consumerInfo) {
