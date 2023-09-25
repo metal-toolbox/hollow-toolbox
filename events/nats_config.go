@@ -66,14 +66,6 @@ type NatsOptions struct {
 
 	// Setting Stream parameters will cause a NATS stream to be added.
 	Stream *NatsStreamOptions `mapstructure:"stream"`
-
-	// Nats KV parameters
-	KV *NatsKVOptions `mapstructure:"kv"`
-}
-
-// NatsKVOptions are the NATS k/v parameters
-type NatsKVOptions struct {
-	ReplicaCount int `mapstructure:"replica_count"`
 }
 
 // NatsConsumerOptions is the parameters for the NATS consumer configuration.
