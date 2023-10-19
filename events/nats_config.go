@@ -66,6 +66,9 @@ type NatsOptions struct {
 
 	// Setting Stream parameters will cause a NATS stream to be added.
 	Stream *NatsStreamOptions `mapstructure:"stream"`
+
+	// KVReplicationFactor sets the number of copies in a NATS clustered environment
+	KVReplicationFactor int `mapstructure:"kv_replication"`
 }
 
 // NatsConsumerOptions is the parameters for the NATS consumer configuration.
