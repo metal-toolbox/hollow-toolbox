@@ -220,7 +220,9 @@ func TestMiddlewareValidatesTokensWithScopes(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.testName, func(t *testing.T) {
 			var jwksURI string
+
 			var jwks jose.JSONWebKeySet
+
 			if tt.jwksFromURI {
 				jwksURI = ginjwt.TestHelperJWKSProvider(ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey2ID)
 			} else {
@@ -719,7 +721,7 @@ func TestAuthMiddlewareConfig(t *testing.T) {
 				JWKS:                   jwks,
 				RoleValidationStrategy: "all",
 			},
-			checkFn: func(t *testing.T, mw ginauth.GenericAuthMiddleware, err error) {
+			checkFn: func(t *testing.T, _ ginauth.GenericAuthMiddleware, err error) {
 				assert.ErrorIs(t, err, ginjwt.ErrInvalidAuthConfig)
 			},
 		},
@@ -731,8 +733,32 @@ func TestAuthMiddlewareConfig(t *testing.T) {
 				Issuer:                 "example-iss",
 				RoleValidationStrategy: "all",
 			},
-			checkFn: func(t *testing.T, mw ginauth.GenericAuthMiddleware, err error) {
+			checkFn: func(t *testing.T, _ ginauth.GenericAuthMiddleware, err error) {
 				assert.ErrorIs(t, err, ginjwt.ErrInvalidAuthConfig)
+			},
+		},
+		{
+			name: "MissingAudience",
+			input: ginjwt.AuthConfig{
+				Enabled:                true,
+				Audience:               "",
+				Issuer:                 "example-iss",
+				RoleValidationStrategy: "all",
+			},
+			checkFn: func(t *testing.T, _ ginauth.GenericAuthMiddleware, err error) {
+				assert.ErrorIs(t, err, ginjwt.ErrInvalidAudience)
+			},
+		},
+		{
+			name: "MissingIssuer",
+			input: ginjwt.AuthConfig{
+				Enabled:                true,
+				Audience:               "example-aud",
+				Issuer:                 "",
+				RoleValidationStrategy: "all",
+			},
+			checkFn: func(t *testing.T, _ ginauth.GenericAuthMiddleware, err error) {
+				assert.ErrorIs(t, err, ginjwt.ErrInvalidIssuer)
 			},
 		},
 	}
