@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
@@ -71,6 +72,14 @@ func NewAuthMiddleware(cfg AuthConfig) (*Middleware, error) {
 
 	if !cfg.Enabled {
 		return mw, nil
+	}
+
+	if cfg.Audience == "" {
+		return nil, errors.Wrap(ErrInvalidAudience, "empty value")
+	}
+
+	if cfg.Issuer == "" {
+		return nil, errors.Wrap(ErrInvalidIssuer, "empty value")
 	}
 
 	uriProvided := (cfg.JWKSURI != "")

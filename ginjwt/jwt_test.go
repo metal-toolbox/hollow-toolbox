@@ -735,6 +735,30 @@ func TestAuthMiddlewareConfig(t *testing.T) {
 				assert.ErrorIs(t, err, ginjwt.ErrInvalidAuthConfig)
 			},
 		},
+		{
+			name: "MissingAudience",
+			input: ginjwt.AuthConfig{
+				Enabled:                true,
+				Audience:               "",
+				Issuer:                 "example-iss",
+				RoleValidationStrategy: "all",
+			},
+			checkFn: func(t *testing.T, mw ginauth.GenericAuthMiddleware, err error) {
+				assert.ErrorIs(t, err, ginjwt.ErrInvalidAudience)
+			},
+		},
+		{
+			name: "MissingIssuer",
+			input: ginjwt.AuthConfig{
+				Enabled:                true,
+				Audience:               "example-aud",
+				Issuer:                 "",
+				RoleValidationStrategy: "all",
+			},
+			checkFn: func(t *testing.T, mw ginauth.GenericAuthMiddleware, err error) {
+				assert.ErrorIs(t, err, ginjwt.ErrInvalidIssuer)
+			},
+		},
 	}
 
 	for _, tc := range testCases {
