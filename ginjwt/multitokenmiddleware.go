@@ -2,6 +2,7 @@ package ginjwt
 
 import (
 	"github.com/pkg/errors"
+
 	"go.hollow.sh/toolbox/ginauth"
 )
 
