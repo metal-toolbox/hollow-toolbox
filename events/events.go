@@ -39,7 +39,9 @@ type Stream interface {
 	Open() error
 
 	// Publish publishes the message to the message broker.
-	Publish(ctx context.Context, subject string, msg []byte) error
+	//
+	// rollupSubject when set to true will overwrite the previous message of the same subject.
+	Publish(ctx context.Context, subject string, msg []byte, rollupSubject bool) error
 
 	// Subscribe subscribes to one or more subjects on the stream returning a message channel for subscribers to read from.
 	Subscribe(ctx context.Context) (MsgCh, error)

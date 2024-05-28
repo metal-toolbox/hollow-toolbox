@@ -277,7 +277,7 @@ func (n *NatsJetstream) consumerConfigIsEqual(consumerInfo *nats.ConsumerInfo) b
 // Publish publishes an event onto the NATS Jetstream. The caller is responsible for message
 // addressing and data serialization. NOTE: The subject passed here will be prepended with any
 // configured PublisherSubjectPrefix.
-func (n *NatsJetstream) Publish(ctx context.Context, subjectSuffix string, data []byte) error {
+func (n *NatsJetstream) Publish(ctx context.Context, subjectSuffix string, data []byte, rollupSubject bool) error {
 	if n.jsctx == nil {
 		return errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
 	}
@@ -296,18 +296,23 @@ func (n *NatsJetstream) Publish(ctx context.Context, subjectSuffix string, data 
 	msg := nats.NewMsg(fullSubject)
 	msg.Data = data
 
+	if msg.Header == nil {
+		msg.Header = make(nats.Header)
+	}
+
 	// inject otel trace context
 	injectOtelTraceContext(ctx, msg)
+
+	// https://docs.nats.io/nats-concepts/jetstream/streams#allowrollup
+	if rollupSubject {
+		msg.Header.Add("Nats-Rollup", "sub")
+	}
 
 	_, err := n.jsctx.PublishMsg(msg, options...)
 	return err
 }
 
 func injectOtelTraceContext(ctx context.Context, msg *nats.Msg) {
-	if msg.Header == nil {
-		msg.Header = make(nats.Header)
-	}
-
 	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(msg.Header))
 }
 
