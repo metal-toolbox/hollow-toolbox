@@ -253,7 +253,8 @@ func (m *Middleware) VerifyScopes(c *gin.Context, scopes []string) error {
 	}
 
 	if !rolesSatisfied {
-		return ginauth.NewAuthorizationError("not authorized, missing required scope")
+		message := fmt.Sprintf("not authorized, missing required scope. Have: %s; Need: %s", strings.Join(roles, ","), strings.Join(scopes, ","))
+		return ginauth.NewAuthorizationError(message)
 	}
 
 	return nil
