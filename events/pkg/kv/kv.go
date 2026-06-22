@@ -55,7 +55,9 @@ func CreateOrBindKVBucket(handle *events.NatsJetstream, bucketName string,
 		for _, o := range opts {
 			o(cfg)
 		}
+
 		return events.AsNatsJetStreamContext(handle).CreateKeyValue(cfg)
 	}
+
 	return kv, err
 }

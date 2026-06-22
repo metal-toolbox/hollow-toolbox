@@ -35,8 +35,7 @@ type AuthError struct {
 func NewAuthenticationError(msg string) *AuthError {
 	return &AuthError{
 		HTTPErrorCode: http.StatusUnauthorized,
-		// nolint:goerr113
-		err: errors.New(msg),
+		err:           errors.New(msg), //nolint:err113
 	}
 }
 
@@ -46,8 +45,7 @@ func NewAuthenticationError(msg string) *AuthError {
 func NewAuthenticationErrorFrom(err error) *AuthError {
 	return &AuthError{
 		HTTPErrorCode: http.StatusUnauthorized,
-		// nolint:goerr113
-		err: err,
+		err:           err,
 	}
 }
 
@@ -56,8 +54,7 @@ func NewAuthenticationErrorFrom(err error) *AuthError {
 func NewAuthorizationError(msg string) *AuthError {
 	return &AuthError{
 		HTTPErrorCode: http.StatusForbidden,
-		// nolint:goerr113
-		err: errors.New(msg),
+		err:           errors.New(msg), //nolint:err113
 	}
 }
 

@@ -4,6 +4,7 @@
 package ginjwt
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
@@ -81,6 +82,7 @@ func TestHelperJoseJWKSProvider(keyIDs ...string) jose.JSONWebKeySet {
 // TestHelperJWKSProvider returns a url for a webserver that will return JSONWebKeySets
 func TestHelperJWKSProvider(keyIDs ...string) string {
 	gin.SetMode(gin.TestMode)
+
 	r := gin.New()
 
 	keySet := TestHelperJoseJWKSProvider(keyIDs...)
@@ -89,7 +91,9 @@ func TestHelperJWKSProvider(keyIDs ...string) string {
 		c.JSON(http.StatusOK, keySet)
 	})
 
-	listener, err := net.Listen("tcp", ":0")
+	lc := &net.ListenConfig{}
+
+	listener, err := lc.Listen(context.Background(), "tcp", ":0")
 	if err != nil {
 		panic(err)
 	}

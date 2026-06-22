@@ -1,6 +1,7 @@
 package ginauth_test
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -30,7 +31,9 @@ func getNewTestRemoteAuthServer(resp *ginauth.AuthResponseV1, forcedSleep time.D
 		c.JSON(statusResp, resp)
 	})
 
-	listener, err := net.Listen("tcp", ":0")
+	lc := &net.ListenConfig{}
+
+	listener, err := lc.Listen(context.Background(), "tcp", ":0")
 	if err != nil {
 		panic(err)
 	}
@@ -118,7 +121,7 @@ func TestRemoteMiddleware(t *testing.T) {
 			})
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest("GET", "http://test/", nil)
+			req := httptest.NewRequestWithContext(context.Background(), "GET", "http://test/", nil)
 
 			// We'll be testing explicitly expected responses. It's up to the server to
 			// actually validate this token.
