@@ -1,6 +1,7 @@
 package ginauth_test
 
 import (
+	"context"
 	"crypto/rsa"
 	"fmt"
 	"net/http"
@@ -209,7 +210,7 @@ func TestMultitokenMiddlewareValidatesTokens(t *testing.T) {
 			})
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest("GET", "http://test/", nil)
+			req := httptest.NewRequestWithContext(context.Background(), "GET", "http://test/", nil)
 
 			signer := ginjwt.TestHelperMustMakeSigner(jose.RS256, tt.signingKeyID, tt.signingKey)
 			rawToken := ginjwt.TestHelperGetToken(signer, tt.claims, "scope", strings.Join(tt.claimScopes, " "))
@@ -270,7 +271,7 @@ func TestMultitokenInvalidAuthHeader(t *testing.T) {
 			})
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest("GET", "http://test/", nil)
+			req := httptest.NewRequestWithContext(context.Background(), "GET", "http://test/", nil)
 
 			req.Header.Set("Authorization", tt.authHeader)
 			r.ServeHTTP(w, req)

@@ -1,11 +1,11 @@
 package events
 
 import (
+	"slices"
 	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/pkg/errors"
-	"golang.org/x/exp/slices"
 )
 
 const (
@@ -173,7 +173,8 @@ func (s *NatsStreamOptions) validate() error {
 		s.Retention = "limits"
 	}
 
-	if !slices.Contains([]string{"workQueue", "limits", "interest"}, s.Retention) {
+	validRetentions := []string{"workQueue", "limits", "interest"}
+	if !slices.Contains(validRetentions, s.Retention) {
 		return errors.Wrap(ErrNatsConfig, "Stream parameters require a valid Retention")
 	}
 

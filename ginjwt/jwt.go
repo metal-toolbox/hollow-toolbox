@@ -1,6 +1,7 @@
 package ginjwt
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 
@@ -144,7 +144,7 @@ func (m *Middleware) VerifyToken(c *gin.Context) (ginauth.ClaimMetadata, error) 
 
 	authHeaderParts := strings.SplitN(authHeader, " ", expectedAuthHeaderParts)
 
-	if !(len(authHeaderParts) == expectedAuthHeaderParts && strings.ToLower(authHeaderParts[0]) == "bearer") {
+	if len(authHeaderParts) != expectedAuthHeaderParts || strings.ToLower(authHeaderParts[0]) != "bearer" {
 		return ginauth.ClaimMetadata{}, ginauth.NewAuthenticationError("invalid authorization header, expected format: \"Bearer token\"")
 	}
 
@@ -181,6 +181,7 @@ func (m *Middleware) VerifyToken(c *gin.Context) (ginauth.ClaimMetadata, error) 
 	}
 
 	var roles []string
+
 	switch r := sc[m.config.RolesClaim].(type) {
 	case string:
 		roles = strings.Split(r, " ")
@@ -191,6 +192,7 @@ func (m *Middleware) VerifyToken(c *gin.Context) (ginauth.ClaimMetadata, error) 
 	}
 
 	var user string
+
 	switch u := sc[m.config.UsernameClaim].(type) {
 	case string:
 		user = u

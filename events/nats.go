@@ -90,6 +90,7 @@ func NewJetstreamFromConn(c *nats.Conn) *NatsJetstream {
 	// JetStream() only returns an error if you call it with incompatible options. It is *not*
 	// a guarantee that c has JetStream enabled.
 	js, _ := c.JetStream()
+
 	return &NatsJetstream{
 		conn:  c,
 		jsctx: js,
@@ -190,7 +191,6 @@ func (n *NatsJetstream) addStream() error {
 			Retention: retention,
 		},
 	)
-
 	if err != nil {
 		return errors.Wrap(ErrNatsJetstreamAddStream, err.Error())
 	}
@@ -297,6 +297,7 @@ func (n *NatsJetstream) Publish(ctx context.Context, subjectSuffix string, data 
 	injectOtelTraceContext(ctx, msg)
 
 	_, err := n.jsctx.PublishMsg(msg, options...)
+
 	return err
 }
 
@@ -346,6 +347,7 @@ func (n *NatsJetstream) subscribeAsPull(_ context.Context) error {
 		if err != nil {
 			log.Printf("PullSubscribe with subject=%s, durable=%s, stream=%s => %v", subject, n.parameters.AppName,
 				n.parameters.Stream.Name, err)
+
 			return errors.Wrap(ErrSubscription, err.Error()+": "+subject)
 		}
 
@@ -365,8 +367,10 @@ func (n *NatsJetstream) PullMsg(_ context.Context, batch int) ([]Message, error)
 		return nil, errors.Wrap(ErrNatsJetstreamAddConsumer, "Jetstream context is not setup")
 	}
 
-	var hasPullSubscription bool
-	var msgs []Message
+	var (
+		hasPullSubscription bool
+		msgs                []Message
+	)
 
 	for _, subscription := range n.subscriptions {
 		if subscription.Type() != nats.PullSubscription {
@@ -379,6 +383,7 @@ func (n *NatsJetstream) PullMsg(_ context.Context, batch int) ([]Message, error)
 		if err != nil {
 			return nil, errors.Wrap(err, ErrNatsMsgPull.Error())
 		}
+
 		msgs = append(msgs, msgIfFromNats(subMsgs...)...)
 	}
 

@@ -2,6 +2,7 @@ package ginjwt_test
 
 import (
 	"bytes"
+	"context"
 	"crypto/rsa"
 	"fmt"
 	"net/http"
@@ -240,7 +241,7 @@ func TestMiddlewareValidatesTokensWithScopes(t *testing.T) {
 			})
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest("GET", "http://test/", nil)
+			req := httptest.NewRequestWithContext(context.Background(), "GET", "http://test/", nil)
 
 			signer := ginjwt.TestHelperMustMakeSigner(jose.RS256, tt.signingKeyID, tt.signingKey)
 			rawToken := ginjwt.TestHelperGetToken(signer, tt.claims, "scope", strings.Join(tt.claimScopes, " "))
@@ -404,7 +405,7 @@ func TestMiddlewareAuthRequired(t *testing.T) {
 			})
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest("GET", "http://test/", nil)
+			req := httptest.NewRequestWithContext(context.Background(), "GET", "http://test/", nil)
 
 			signer := ginjwt.TestHelperMustMakeSigner(jose.RS256, tt.signingKeyID, tt.signingKey)
 			rawToken := ginjwt.TestHelperGetToken(signer, tt.claims, "scope", strings.Join(tt.claimScopes, " "))
@@ -465,7 +466,7 @@ func TestInvalidAuthHeader(t *testing.T) {
 			})
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest("GET", "http://test/", nil)
+			req := httptest.NewRequestWithContext(context.Background(), "GET", "http://test/", nil)
 
 			req.Header.Set("Authorization", tt.authHeader)
 			r.ServeHTTP(w, req)
@@ -657,7 +658,7 @@ func TestVerifyTokenWithScopes(t *testing.T) {
 			rawToken := ginjwt.TestHelperGetToken(signer, tt.claims, "scope", strings.Join(tt.claimScopes, " "))
 
 			// dummy http request
-			req, _ := http.NewRequest(http.MethodGet, "http://foo.bar", bytes.NewReader([]byte{}))
+			req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://foo.bar", bytes.NewReader([]byte{}))
 			ctx.Request = req
 			ctx.Request.Header.Set("Authorization", fmt.Sprintf("bearer %s", rawToken))
 

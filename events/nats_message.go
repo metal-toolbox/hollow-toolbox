@@ -18,6 +18,7 @@ func AsNatsMsg(m Message) (*nats.Msg, error) {
 	if !ok {
 		return nil, errors.New("Message is not a NATS message type")
 	}
+
 	return nm.msg, nil
 }
 
@@ -67,5 +68,6 @@ func msgIfFromNats(natsMsgs ...*nats.Msg) []Message {
 	for _, m := range natsMsgs {
 		msgs = append(msgs, &natsMsg{msg: m})
 	}
+
 	return msgs
 }

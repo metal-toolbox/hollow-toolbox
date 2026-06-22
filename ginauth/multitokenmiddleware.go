@@ -55,7 +55,6 @@ func (mtm *MultiTokenMiddleware) AuthRequired(scopes []string) gin.HandlerFunc {
 				defer wg.Done()
 
 				cm, err := v.VerifyTokenWithScopes(c, scopes)
-
 				if err != nil {
 					v.SetMetadata(c, cm)
 				}

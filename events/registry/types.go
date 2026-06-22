@@ -35,10 +35,12 @@ func ControllerIDFromString(s string) (ControllerID, error) {
 	if !found {
 		return nil, fmt.Errorf("%w: missing delimiter", ErrBadFormat)
 	}
+
 	uuid, err := uuid.Parse(uuidStr)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrBadFormat, err.Error())
 	}
+
 	return &workerUUID{
 		appName: name,
 		uuid:    uuid,
