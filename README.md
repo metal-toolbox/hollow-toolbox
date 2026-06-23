@@ -1,4 +1,4 @@
-[![Go Reference](https://pkg.go.dev/badge/go.hollow.sh/toolbox.svg)](https://pkg.go.dev/go.hollow.sh/toolbox)
+[![Go Reference](https://pkg.go.dev/badge/github.com/metal-toolbox/hollow-toolbox.svg)](https://pkg.go.dev/github.com/metal-toolbox/hollow-toolbox)
 
 # Hollow Toolbox
 

@@ -14,7 +14,7 @@ import (
 	traceSDK "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
-	natsTest "go.hollow.sh/toolbox/events/internal/test"
+	natsTest "github.com/metal-toolbox/hollow-toolbox/events/internal/test"
 )
 
 func TestJetstreamFromConn(t *testing.T) {

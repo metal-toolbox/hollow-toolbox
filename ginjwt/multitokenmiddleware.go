@@ -3,7 +3,7 @@ package ginjwt
 import (
 	"github.com/pkg/errors"
 
-	"go.hollow.sh/toolbox/ginauth"
+	"github.com/metal-toolbox/hollow-toolbox/ginauth"
 )
 
 // NewMultiTokenMiddlewareFromConfigs builds a MultiTokenMiddleware object from multiple AuthConfigs.

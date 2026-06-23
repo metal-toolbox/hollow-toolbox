@@ -51,7 +51,7 @@ formatters:
       extra-rules: true
     goimports:
       local-prefixes:
-        - go.hollow.sh/toolbox
+        - github.com/metal-toolbox/hollow-toolbox
   exclusions:
     generated: lax
     paths:

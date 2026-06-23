@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	events "go.hollow.sh/toolbox/events"
+	events "github.com/metal-toolbox/hollow-toolbox/events"
 )
 
 // MockStreamParameters is a mock of StreamParameters interface.

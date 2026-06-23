@@ -14,8 +14,8 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	"go.hollow.sh/toolbox/events"
-	"go.hollow.sh/toolbox/events/pkg/kv"
+	"github.com/metal-toolbox/hollow-toolbox/events"
+	"github.com/metal-toolbox/hollow-toolbox/events/pkg/kv"
 )
 
 var (

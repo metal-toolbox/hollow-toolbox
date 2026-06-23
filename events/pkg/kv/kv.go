@@ -7,7 +7,7 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	"go.hollow.sh/toolbox/events"
+	"github.com/metal-toolbox/hollow-toolbox/events"
 )
 
 // DefaultKVConfig returns a configuration with "mostly sane" defaults. Override
