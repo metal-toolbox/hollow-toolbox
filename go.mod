@@ -1,4 +1,4 @@
-module go.hollow.sh/toolbox
+module github.com/metal-toolbox/hollow-toolbox
 
 go 1.26
 

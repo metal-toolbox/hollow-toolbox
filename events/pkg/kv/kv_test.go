@@ -7,8 +7,8 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	"go.hollow.sh/toolbox/events"
-	kvTest "go.hollow.sh/toolbox/events/internal/test"
+	"github.com/metal-toolbox/hollow-toolbox/events"
+	kvTest "github.com/metal-toolbox/hollow-toolbox/events/internal/test"
 
 	"github.com/stretchr/testify/require"
 )

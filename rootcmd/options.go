@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"go.hollow.sh/toolbox/version"
+	"github.com/metal-toolbox/hollow-toolbox/version"
 
 	"go.uber.org/zap"
 )

@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	"go.hollow.sh/toolbox/ginauth"
+	"github.com/metal-toolbox/hollow-toolbox/ginauth"
 )
 
 func getNewTestRemoteAuthServer(resp *ginauth.AuthResponseV1, forcedSleep time.Duration) string {

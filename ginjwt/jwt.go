@@ -13,7 +13,7 @@ import (
 	"gopkg.in/go-jose/go-jose.v2"
 	"gopkg.in/go-jose/go-jose.v2/jwt"
 
-	"go.hollow.sh/toolbox/ginauth"
+	"github.com/metal-toolbox/hollow-toolbox/ginauth"
 )
 
 const (
