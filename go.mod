@@ -1,6 +1,6 @@
 module github.com/metal-toolbox/hollow-toolbox
 
-go 1.26
+go 1.26.0
 
 require (
 	github.com/gin-gonic/gin v1.12.0
@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/nats-io/nats-server/v2 v2.14.5
+	github.com/nats-io/nats-server/v2 v2.14.6
 	github.com/nats-io/nats.go v1.53.1
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.10.2
