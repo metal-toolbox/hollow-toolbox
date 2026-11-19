@@ -20,6 +20,7 @@ const (
 	contextKeySubject       = "jwt.subject"
 	contextKeyUser          = "jwt.user"
 	contextKeyRoles         = "jwt.roles"
+	contextKeyIssuer        = "jwt.issuer"
 	expectedAuthHeaderParts = 2
 )
 
@@ -104,6 +105,7 @@ func NewAuthMiddleware(cfg AuthConfig) (*Middleware, error) {
 }
 
 // SetMetadata sets the needed metadata to the gin context which came from the token
+// It never writes the issuer; see MultiTokenMiddleware.
 func (m *Middleware) SetMetadata(c *gin.Context, cm ginauth.ClaimMetadata) {
 	if cm.Subject != "" {
 		c.Set(contextKeySubject, cm.Subject)
@@ -125,6 +127,7 @@ func (m *Middleware) VerifyTokenWithScopes(c *gin.Context, scopes []string) (gin
 	c.Set(contextKeySubject, cm.Subject)
 	c.Set(contextKeyUser, cm.User)
 	c.Set(contextKeyRoles, cm.Roles)
+	c.Set(contextKeyIssuer, cm.Issuer)
 
 	if err := m.VerifyScopes(c, scopes); err != nil {
 		return ginauth.ClaimMetadata{}, err
@@ -200,7 +203,7 @@ func (m *Middleware) VerifyToken(c *gin.Context) (ginauth.ClaimMetadata, error) 
 		user = cl.Subject
 	}
 
-	return ginauth.ClaimMetadata{Subject: cl.Subject, User: user, Roles: roles}, nil
+	return ginauth.ClaimMetadata{Subject: cl.Subject, User: user, Issuer: cl.Issuer, Roles: roles}, nil
 }
 
 // AuthRequired provides a middleware that ensures a request has authentication.  In order to
@@ -220,6 +223,7 @@ func (m *Middleware) AuthRequired() gin.HandlerFunc {
 		c.Set(contextKeySubject, cm.Subject)
 		c.Set(contextKeyUser, cm.User)
 		c.Set(contextKeyRoles, cm.Roles)
+		c.Set(contextKeyIssuer, cm.Issuer)
 	}
 }
 
@@ -368,4 +372,10 @@ func GetSubject(c *gin.Context) string {
 // has already occurred. If authentication failed or there isn't a user an empty string is returned.
 func GetUser(c *gin.Context) string {
 	return c.GetString(contextKeyUser)
+}
+
+// GetIssuer will return the verified JWT issuer that is saved in the request. This requires that authentication of
+// the request has already occurred. If authentication failed an empty string is returned.
+func GetIssuer(c *gin.Context) string {
+	return c.GetString(contextKeyIssuer)
 }

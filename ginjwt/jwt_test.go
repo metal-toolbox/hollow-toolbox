@@ -538,6 +538,7 @@ func TestVerifyTokenWithScopes(t *testing.T) {
 			want: ginauth.ClaimMetadata{
 				Subject: "test-user",
 				User:    "test-user",
+				Issuer:  "ginjwt.test.issuer",
 				Roles: []string{
 					"testScope",
 				},
@@ -563,6 +564,7 @@ func TestVerifyTokenWithScopes(t *testing.T) {
 			want: ginauth.ClaimMetadata{
 				Subject: "test-user",
 				User:    "test-user",
+				Issuer:  "ginjwt.test.issuer",
 				Roles: []string{
 					"testScope",
 				},
@@ -606,6 +608,7 @@ func TestVerifyTokenWithScopes(t *testing.T) {
 			want: ginauth.ClaimMetadata{
 				Subject: "test-user",
 				User:    "test-user",
+				Issuer:  "ginjwt.test.issuer",
 				Roles: []string{
 					"admin-scopes",
 				},
@@ -630,6 +633,7 @@ func TestVerifyTokenWithScopes(t *testing.T) {
 			want: ginauth.ClaimMetadata{
 				Subject: "test-user",
 				User:    "test-user",
+				Issuer:  "ginjwt.test.issuer",
 				Roles: []string{
 					"testScope",
 					"anotherScope",
@@ -770,4 +774,210 @@ func TestAuthMiddlewareConfig(t *testing.T) {
 			tc.checkFn(tt, mw, err)
 		})
 	}
+}
+
+// issuerTestToken returns a signed token for the given issuer, valid for the
+// "ginjwt.test" audience and carrying the "testScope" scope.
+func issuerTestToken(t *testing.T, issuer string) string {
+	t.Helper()
+
+	signer := ginjwt.TestHelperMustMakeSigner(jose.RS256, ginjwt.TestPrivRSAKey1ID, ginjwt.TestPrivRSAKey1)
+	claims := jwt.Claims{
+		Subject:   "test-user",
+		Issuer:    issuer,
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
+		Audience:  jwt.Audience{"ginjwt.test"},
+	}
+
+	return ginjwt.TestHelperGetToken(signer, claims, "scope", "testScope")
+}
+
+// issuerTestContext returns a gin context whose request carries the token as a bearer token.
+func issuerTestContext(t *testing.T, token string) (*gin.Context, *httptest.ResponseRecorder) {
+	t.Helper()
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequestWithContext(context.Background(), http.MethodGet, "http://test/", nil)
+	c.Request.Header.Set("Authorization", "bearer "+token)
+
+	return c, w
+}
+
+func TestAuthRequiredSetsIssuer(t *testing.T) {
+	testCases := []struct {
+		name       string
+		tokenIss   string
+		wantCode   int
+		wantIssuer string
+	}{
+		{
+			name:       "valid token sets the configured issuer",
+			tokenIss:   "ginjwt.test.issuer",
+			wantCode:   http.StatusOK,
+			wantIssuer: "ginjwt.test.issuer",
+		},
+		{
+			name:       "wrong issuer fails and sets nothing",
+			tokenIss:   "ginjwt.other.issuer",
+			wantCode:   http.StatusUnauthorized,
+			wantIssuer: "",
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			jwks := ginjwt.TestHelperJoseJWKSProvider(ginjwt.TestPrivRSAKey1ID)
+			authMW, err := ginjwt.NewAuthMiddleware(ginjwt.AuthConfig{
+				Enabled:  true,
+				Audience: "ginjwt.test",
+				Issuer:   "ginjwt.test.issuer",
+				JWKS:     jwks,
+			})
+			require.NoError(t, err)
+
+			c, w := issuerTestContext(t, issuerTestToken(t, tt.tokenIss))
+			authMW.AuthRequired()(c)
+			c.Writer.WriteHeaderNow()
+
+			assert.Equal(t, tt.wantCode, w.Code)
+			assert.Equal(t, tt.wantIssuer, ginjwt.GetIssuer(c))
+		})
+	}
+}
+
+func TestVerifyTokenWithScopesSetsIssuer(t *testing.T) {
+	testCases := []struct {
+		name       string
+		tokenIss   string
+		wantErr    error
+		wantMeta   ginauth.ClaimMetadata
+		wantIssuer string
+	}{
+		{
+			name:     "valid token sets the configured issuer",
+			tokenIss: "ginjwt.test.issuer",
+			wantErr:  nil,
+			wantMeta: ginauth.ClaimMetadata{
+				Subject: "test-user",
+				User:    "test-user",
+				Issuer:  "ginjwt.test.issuer",
+				Roles:   []string{"testScope"},
+			},
+			wantIssuer: "ginjwt.test.issuer",
+		},
+		{
+			name:       "wrong issuer fails and sets nothing",
+			tokenIss:   "ginjwt.other.issuer",
+			wantErr:    ginauth.ErrAuthentication,
+			wantMeta:   ginauth.ClaimMetadata{},
+			wantIssuer: "",
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			jwks := ginjwt.TestHelperJoseJWKSProvider(ginjwt.TestPrivRSAKey1ID)
+			authMW, err := ginjwt.NewAuthMiddleware(ginjwt.AuthConfig{
+				Enabled:  true,
+				Audience: "ginjwt.test",
+				Issuer:   "ginjwt.test.issuer",
+				JWKS:     jwks,
+			})
+			require.NoError(t, err)
+
+			c, _ := issuerTestContext(t, issuerTestToken(t, tt.tokenIss))
+			got, err := authMW.VerifyTokenWithScopes(c, []string{"testScope"})
+
+			assert.ErrorIs(t, err, tt.wantErr)
+			assert.Equal(t, tt.wantMeta, got)
+			assert.Equal(t, tt.wantIssuer, ginjwt.GetIssuer(c))
+		})
+	}
+}
+
+func TestSetMetadataDoesNotWriteIssuer(t *testing.T) {
+	testCases := []struct {
+		name       string
+		preset     map[string]any
+		wantIssuer string
+	}{
+		{
+			name:       "existing issuer is left unchanged",
+			preset:     map[string]any{"jwt.issuer": "ginjwt.first.issuer"},
+			wantIssuer: "ginjwt.first.issuer",
+		},
+		{
+			name:       "no issuer is written",
+			preset:     map[string]any{},
+			wantIssuer: "",
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			authMW, err := ginjwt.NewAuthMiddleware(ginjwt.AuthConfig{})
+			require.NoError(t, err)
+
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			for k, v := range tt.preset {
+				c.Set(k, v)
+			}
+
+			authMW.SetMetadata(c, ginauth.ClaimMetadata{
+				Subject: "test-user",
+				User:    "test-user",
+				Issuer:  "ginjwt.failed.issuer",
+			})
+
+			assert.Equal(t, tt.wantIssuer, ginjwt.GetIssuer(c))
+		})
+	}
+}
+
+func TestGetIssuer(t *testing.T) {
+	testCases := []struct {
+		name   string
+		preset map[string]any
+		want   string
+	}{
+		{
+			name:   "issuer set",
+			preset: map[string]any{"jwt.issuer": "ginjwt.test.issuer"},
+			want:   "ginjwt.test.issuer",
+		},
+		{
+			name:   "issuer not set",
+			preset: map[string]any{},
+			want:   "",
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			for k, v := range tt.preset {
+				c.Set(k, v)
+			}
+
+			assert.Equal(t, tt.want, ginjwt.GetIssuer(c))
+		})
+	}
+}
+
+func TestMultiTokenMiddlewareKeepsIssuerOfSuccessfulVerifier(t *testing.T) {
+	jwks := ginjwt.TestHelperJoseJWKSProvider(ginjwt.TestPrivRSAKey1ID)
+
+	mtm, err := ginjwt.NewMultiTokenMiddlewareFromConfigs(
+		ginjwt.AuthConfig{Enabled: true, Audience: "ginjwt.test", Issuer: "ginjwt.other.issuer", JWKS: jwks},
+		ginjwt.AuthConfig{Enabled: true, Audience: "ginjwt.test", Issuer: "ginjwt.test.issuer", JWKS: jwks},
+	)
+	require.NoError(t, err)
+
+	c, w := issuerTestContext(t, issuerTestToken(t, "ginjwt.test.issuer"))
+	mtm.AuthRequired([]string{"testScope"})(c)
+	c.Writer.WriteHeaderNow()
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "ginjwt.test.issuer", ginjwt.GetIssuer(c))
 }
