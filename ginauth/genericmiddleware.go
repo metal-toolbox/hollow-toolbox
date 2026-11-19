@@ -10,6 +10,7 @@ type ClaimMetadata struct {
 	Subject string
 	User    string
 	Roles   []string
+	Issuer  string
 }
 
 // GenericAuthMiddleware defines middleware that verifies a token coming from a gin.Context.
